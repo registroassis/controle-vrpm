@@ -71,7 +71,7 @@
       <label for="vw-s">Senha</label><input id="vw-s" type="password" autocomplete="${criar ? 'new-password' : 'current-password'}" required minlength="6">
       ${criar ? '<label for="vw-s2">Repita a senha</label><input id="vw-s2" type="password" autocomplete="new-password" required>' : ''}
       <button class="pri" type="submit">${criar ? 'Criar acesso' : 'Entrar'}</button></form>
-      <div class="row">${criar ? '<button class="lnk" data-m="entrar">Já tenho senha</button>' : '<button class="lnk" data-m="criar">Primeiro acesso</button><button class="lnk" data-m="reset">Esqueci a senha</button>'}</div>
+      <div class="row">${criar ? '<button class="lnk" data-m="entrar">Já tenho senha</button>' : '<button class="lnk" data-m="reset">Esqueci a senha / criar minha senha</button>'}</div>
       <div class="msg"></div>`);
     document.querySelectorAll('#vw-login [data-m]').forEach(b => b.onclick = async () => {
       if (b.dataset.m === 'reset') { const e = document.getElementById('vw-e').value.trim(); if (!e) return msg('Digite seu e-mail acima e clique de novo em "Esqueci a senha".'); try { await auth.sendPasswordResetEmail(e); msg('Enviamos um e-mail para redefinir a senha (veja também o spam).', true); } catch (er) { msg(erroPt(er)); } return; }
@@ -119,7 +119,7 @@
     const pintar = async () => {
       const snap = await ref.get(); const lista = (snap.exists ? snap.data().emails : null) || [];
       let el = document.getElementById('vw-users'); if (!el) { el = document.createElement('div'); el.id = 'vw-users'; document.body.appendChild(el); }
-      el.innerHTML = `<div class="box"><h2 style="margin:0 0 4px">Usuários com acesso</h2><p style="margin:0;color:#6B7280;font-size:.88rem">Quem está na lista pode ver e lançar. A pessoa entra no site, clica em "Primeiro acesso" e cria a própria senha com este e-mail.</p>
+      el.innerHTML = `<div class="box"><h2 style="margin:0 0 4px">Usuários com acesso</h2><p style="margin:0;color:#6B7280;font-size:.88rem">Quem está na lista pode ver e lançar. Para cada pessoa nova: 1) inclua o e-mail aqui; 2) no Firebase, em Authentication › Usuários › Adicionar usuário, cadastre o mesmo e-mail com uma senha provisória; 3) a pessoa entra no site e, se quiser, troca a senha em "Esqueci a senha / criar minha senha".</p>
         <ul><li><span><b>${DONO}</b> (administradora)</span></li>${lista.map(e => `<li><span>${e}</span><button data-rm="${e}">Remover</button></li>`).join('')}</ul>
         <form id="vw-add" style="display:flex;gap:8px"><input type="email" id="vw-ne" placeholder="e-mail da pessoa" required><button class="pri" type="submit">Incluir</button></form>
         <div style="text-align:right;margin-top:14px"><button id="vw-close">Fechar</button></div></div>`;
@@ -134,7 +134,6 @@
     tela('<h1>Controle VRPM</h1><p>Carregando…</p>');
     auth.onAuthStateChanged(u => {
       if (!u) return telaEntrar();
-      if (!u.emailVerified) return telaVerificar(u);
       iniciar(u);
     });
   });

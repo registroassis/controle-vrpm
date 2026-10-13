@@ -10,4 +10,4 @@ window.VRPM_FIREBASE_CONFIG = {
   appId: "1:82454708954:web:0b739e4921c4fbbdccdbe3"
 };
 /* E-mail da administradora (o mesmo das regras do Firestore). */
-window.VRPM_DONO = "financeiro@registroassis.com.br";
+window.VRPM_DONO = "vrpmimoveis@gmail.com";
