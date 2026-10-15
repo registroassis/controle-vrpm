@@ -1765,6 +1765,7 @@ function render() {
       ${window.VRPM_WEB ? `<div class="side-foot" style="flex-wrap:wrap;gap:6px"><span class="nav-t mute" style="font-size:.75rem;word-break:break-all">${esc(window.VRPM_WEB.email || '')}</span>${window.VRPM_WEB.dono ? `<button class="btn small" data-act="webUsuarios">Usuários</button>` : ''}<button class="btn small" data-act="webSair">Sair</button></div>` : ''}
     </nav>
     <main>
+      ${window.VRPM_WEB ? '' : `<div class="note warn" role="alert" style="margin:0 0 14px;font-size:.95rem"><b>Este sistema mudou para o site.</b> Desde 13/10/2026 os lançamentos são feitos em <a href="https://registroassis.github.io/controle-vrpm/" target="_blank" rel="noopener"><b>registroassis.github.io/controle-vrpm</b></a>. Esta versão ficou só para consulta: o que for lançado aqui <b>não vai</b> para o site.</div>`}
       <div class="topbar">
         ${['porimovel', 'vendas', 'loc', 'loc_rank', 'loc_im', 'st', 'st_import', 'st_rep', 'st_hist', 'st_comp', 'st_cfg', 'empresa', 'pendencias', 'backup', 'indices', 'origens', 'historico', 'lixeira', 'manual', 'receb', 'conferencia'].includes(S.view) ? `<button class="iconbtn backbtn" data-go="mais" aria-label="Voltar">${icon('back')}</button>` : ''}
         <div class="ptitle"><div class="crumb">${esc(grp)}${S.view !== 'inicio' ? ' <span aria-hidden="true">›</span> ' + esc(titles[S.view] || '') : ''}</div><h1>${esc(titles[S.view] || '')}</h1><p>${esc(SUBT[S.view] || '')}</p></div>
@@ -2209,7 +2210,8 @@ function lancForm(id, preset = {}) {
       <div class="f req"><label>Tipo</label><div class="seg" role="group" id="l_tipo">${['RECEITA', 'DESPESA', 'INVESTIMENTO'].map(t => `<button type="button" data-ltipo="${t}" aria-pressed="${l.tipo === t}">${t[0] + t.slice(1).toLowerCase()}</button>`).join('')}</div></div>
       <div class="f req"><label for="l_valor">Valor</label><input class="money" type="text" id="l_valor" inputmode="decimal" placeholder="0,00" value="${moneyInput(l.valor)}" autocomplete="off"></div>
       <div class="f req"><label for="l_origem">Origem</label><select id="l_origem"><option value="">Escolha…</option>${origens().map(o => `<option ${o.nome === l.origem ? 'selected' : ''}>${esc(o.nome)}</option>`).join('')}<option value="__nova">+ Cadastrar nova origem…</option></select>
-        <input type="text" id="l_novaorig" placeholder="Nome da nova origem (ex.: MORUMBI 452)" hidden></div>
+        <input type="text" id="l_novaorig" placeholder="Nome da nova origem (ex.: MORUMBI 452)" hidden>
+        <div id="l_novaorig_box" hidden><label for="l_novaorig_im" style="margin-top:8px">De qual imóvel é esta origem?</label><select id="l_novaorig_im"><option value="">Escolha…</option><option value="__geral">Despesa geral da VRPM (sem imóvel)</option>${imList().filter(i => !i.arquivado).sort((a, b) => shortName(a).localeCompare(shortName(b), 'pt-BR', { numeric: true })).map(i => `<option value="${i.id}">${esc(shortName(i))}</option>`).join('')}</select><span class="hint">Assim os valores entram no imóvel, no Painel de locação e no Ranking.</span></div></div>
       <div class="f"><label for="l_desc">Descrição</label><input type="text" id="l_desc" list="dl_desc" value="${esc(l.descricao || '')}" autocomplete="off"><datalist id="dl_desc"></datalist><span class="hint" id="l_hint"></span></div>
       <div class="f2"><div class="f req"><label for="l_mes">Mês</label><select id="l_mes">${MESES.map((m, i) => `<option value="${i + 1}" ${i + 1 === l.mes ? 'selected' : ''}>${m[0] + m.slice(1).toLowerCase()}</option>`).join('')}</select></div>
         <div class="f req"><label for="l_ano">Ano</label><select id="l_ano">${anos.map(a => `<option ${a === l.ano ? 'selected' : ''}>${a}</option>`).join('')}</select></div></div>
@@ -2223,7 +2225,7 @@ function lancForm(id, preset = {}) {
 function lancFormWire() {
   const fill = () => {
     const o = $('#l_origem').value; const ty = $('#l_tipo [aria-pressed="true"]')?.dataset.ltipo;
-    $('#l_novaorig').hidden = o !== '__nova';
+    $('#l_novaorig').hidden = o !== '__nova'; if ($('#l_novaorig_box')) $('#l_novaorig_box').hidden = o !== '__nova';
     const hist = lancList().filter(x => x.origem === o && (!ty || x.tipo === ty)).sort((a, b) => b.ano - a.ano || b.mes - a.mes);
     const seen = new Map(); hist.forEach(x => { if (x.descricao && !seen.has(x.descricao)) seen.set(x.descricao, x); });
     $('#dl_desc').innerHTML = [...seen.keys()].map(k => `<option value="${esc(k)}">`).join('');
@@ -2254,10 +2256,11 @@ async function saveLanc(ctx, dup) {
   if (!tipo) errs.push(['l_tipo', 'Escolha o tipo.']);
   if (valor == null || Number.isNaN(valor) || valor <= 0) errs.push(['l_valor', 'Informe um valor maior que zero (ex.: 1.234,56).']);
   if (!origem) errs.push(['l_origem', 'Escolha a origem.']);
-  if (origem === '__nova') { origem = v('l_novaorig').toUpperCase(); if (!origem) errs.push(['l_novaorig', 'Digite o nome da nova origem.']); }
+  let novaIm = null;
+  if (origem === '__nova') { origem = v('l_novaorig').toUpperCase(); novaIm = v('l_novaorig_im'); if (!origem) errs.push(['l_novaorig', 'Digite o nome da nova origem.']); if (!novaIm) errs.push(['l_novaorig_im', 'Escolha o imóvel (ou "Despesa geral da VRPM").']); }
   if (showErrs(errs)) return;
   try {
-    if (!origens().some(o => o.nome === origem)) await addOrigem(origem);
+    if (!origens().some(o => o.nome === origem)) await addOrigem(origem, novaIm && novaIm !== '__geral' ? { imoveis: [novaIm], natureza: 'Imóvel' } : novaIm === '__geral' ? { natureza: 'Despesas gerais da empresa' } : {});
     const data = { tipo, origem, valor, descricao: v('l_desc') || null, ano: Number(v('l_ano')), mes: Number(v('l_mes')), data: v('l_data') || null, status: v('l_status'), observacoes: v('l_obs') || null };
     if (ctx.id && !dup) {
       const f = findLanc(ctx.id); const oldKey = `${f.doc.ano}-${pad(f.doc.mes)}`; const newKey = `${data.ano}-${pad(data.mes)}`;
@@ -2839,6 +2842,7 @@ async function importarBanco(d, nome) {
     // conferência: relê do banco e compara com o arquivo
     const cmp = []; for (const [c] of BANCO_COLS) { const snap = await S.db.collection(c).get(); const got = {}; snap.docs.forEach(x => { got[`${c}/${x.id}`] = x.data(); }); const a = bancoContagem(Object.fromEntries(paths.filter(p => p.startsWith(c + '/')).map(p => [p, d.docs[p]]))) [c] || { docs: 0, itens: 0 }; const b = bancoContagem(got)[c] || { docs: 0, itens: 0 }; cmp.push([c, a, b]); }
     const ok = cmp.every(([, a, b]) => a.docs === b.docs && a.itens === b.itens);
+    toast(`Importação concluída: ${n} registros`);
     await logHist('IMPORTAÇÃO', '—', `Banco completo importado de ${nome}: ${n} registros (${ok ? 'contagens conferidas' : 'ATENÇÃO: contagens diferentes'})`);
     S.sheet = { kind: 'custom', data: { title: ok ? 'Importação conferida' : 'Atenção: confira a importação', body: `<div class="note ${ok ? '' : 'warn'}">${ok ? 'Todos os registros foram gravados e as contagens batem com o arquivo.' : 'Alguma contagem não bate. Não apague o sistema antigo e me avise.'}</div><div class="tablewrap"><table><thead><tr><th>Coleção</th><th>Registros (arquivo → site)</th><th>Itens (arquivo → site)</th></tr></thead><tbody>${cmp.map(([c, a, b]) => `<tr><td>${c}</td><td class="${a.docs === b.docs ? '' : 'neg'}">${a.docs} → ${b.docs}</td><td class="${a.itens === b.itens ? '' : 'neg'}">${a.itens} → ${b.itens}</td></tr>`).join('')}</tbody></table></div>`, foot: '<button class="btn primary" data-act="closeSheet">OK</button>' } }; render();
   } });
