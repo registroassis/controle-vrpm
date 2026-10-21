@@ -1994,7 +1994,9 @@ function imovelSheet(id) {
       <section class="panel"><div class="panel-h"><h2>Dados do imóvel</h2>${S.readonly ? '' : `<button class="btn small" data-act="editImovel:${id}">${icon('edit')}Editar</button>`}</div>
         <dl class="info">
           ${fld('Nome', esc(im.nome))}${fld('Unidade', esc(im.unidade))}${fld('Proprietário', esc(im.proprietario))}${fld('Grupo', esc(im.grupo))}
-          ${fld('Endereço', esc(im.endereco))}${fld('Metragem', esc(im.metragem))}${fld('Matrícula', esc(im.matricula))}
+          ${fld('Empreendimento', esc(im.empreendimento))}${fld('Nº da unidade', esc(im.numero_unidade))}${fld('Andar', esc(im.andar))}${fld('Configuração', esc(im.configuracao))}
+          ${fld('Endereço', esc(im.endereco))}${fld('Cidade', esc(im.cidade))}${fld('Metragem', esc(im.metragem))}${fld('Matrícula', esc(im.matricula))}
+          ${fld('Curta temporada', esc(im.curta_temporada))}${fld('Situação atual', esc(im.situacao_atual), im.situacao_atual_em ? 'em ' + fdate(im.situacao_atual_em) : null)}
           ${fld('Data da compra', im.data_compra ? fdate(im.data_compra) : null, im.data_compra_texto ? `original: "${im.data_compra_texto}"` : null)}
           ${fld('Previsão de entrega', im.previsao_entrega ? `<span class="${obraAtrasada(im) ? 'neg' : ''}">${fdate(im.previsao_entrega)}</span>` : null, im.situacao_obra === 'ENTREGUE' ? 'entregue' : null)}
           ${fld('Valor do contrato', im.valor_contrato != null ? brl(im.valor_contrato) : null)}${fld('Valor de entrada', im.valor_entrada != null ? brl(im.valor_entrada) : null, im.valor_entrada_texto)}
@@ -2030,7 +2032,14 @@ function imovelForm(id) {
       <div class="f2" id="i_mensal" ${im.situacao_uso === 'LOCAÇÃO MENSAL' ? '' : 'hidden'}><div class="f"><label for="i_aluguel">Valor da locação (mês)</label><input type="text" id="i_aluguel" inputmode="decimal" value="${moneyInput(im.valor_locacao)}"></div>
         <div class="f"><label for="i_inicio">Início do contrato</label><input type="date" id="i_inicio" value="${im.inicio_contrato || ''}"></div></div>
       <div class="f"><label for="i_grupo">Grupo</label><select id="i_grupo">${['Imóveis residenciais', 'Hotelaria Intercity (condo-hotel)'].map(g => `<option ${g === im.grupo ? 'selected' : ''}>${g}</option>`).join('')}</select></div>
+      <div class="f2"><div class="f"><label for="i_emp">Empreendimento</label><input type="text" id="i_emp" value="${esc(im.empreendimento || '')}" placeholder="ex.: Nex One Itaim"></div>
+        <div class="f"><label for="i_num">Nº da unidade</label><input type="text" id="i_num" value="${esc(im.numero_unidade || '')}" placeholder="ex.: 1007"></div></div>
+      <div class="f2"><div class="f"><label for="i_andar">Andar</label><input type="text" id="i_andar" value="${esc(im.andar || '')}" placeholder="ex.: 10º andar"></div>
+        <div class="f"><label for="i_conf">Configuração</label><input type="text" id="i_conf" list="dl_conf" value="${esc(im.configuracao || '')}" placeholder="ex.: Studio"><datalist id="dl_conf">${['Studio', 'Quarto e sala', '2 quartos'].map(x => `<option value="${x}">`).join('')}</datalist></div></div>
       <div class="f"><label for="i_end">Endereço</label><input type="text" id="i_end" value="${esc(im.endereco || '')}"></div>
+      <div class="f2"><div class="f"><label for="i_cid">Cidade</label><input type="text" id="i_cid" value="${esc(im.cidade || '')}" placeholder="ex.: São Paulo/SP"></div>
+        <div class="f"><label for="i_ct">Curta temporada</label><input type="text" id="i_ct" list="dl_ct" value="${esc(im.curta_temporada || '')}" placeholder="ex.: Permitido"><datalist id="dl_ct">${['Permitido', 'Não – convenção proíbe', 'Sim – NR'].map(x => `<option value="${x}">`).join('')}</datalist></div></div>
+      <div class="f"><label for="i_sitat">Situação atual</label><input type="text" id="i_sitat" value="${esc(im.situacao_atual || '')}" placeholder="ex.: Pronto – curta temporada"></div>
       <div class="f2"><div class="f"><label for="i_met">Metragem</label><input type="text" id="i_met" value="${esc(im.metragem || '')}" placeholder="ex.: 30,04 m²"></div>
         <div class="f"><label for="i_mat">Matrícula</label><input type="text" id="i_mat" inputmode="numeric" value="${esc(im.matricula || '')}"></div></div>
       <div class="f2"><div class="f"><label for="i_compra">Data da compra</label><input type="date" id="i_compra" value="${im.data_compra || ''}">${im.data_compra_texto ? `<span class="hint">No original: "${esc(im.data_compra_texto)}"</span>` : ''}</div>
@@ -2056,11 +2065,13 @@ async function saveImovel(ctx) {
     metragem: v('i_met') || null, matricula: v('i_mat') || null, data_compra: v('i_compra') || null, situacao_obra: v('i_obra'),
     previsao_entrega: v('i_prev') || null, n_parcelas: v('i_nparc') ? Number(v('i_nparc')) : null, valor_contrato: money.i_contrato,
     valor_entrada: money.i_entrada, reajuste: v('i_reaj') || null, base_intermediaria: money.i_base, observacoes: v('i_obs'),
-    categoria: v('i_cat') || null, situacao_uso: v('i_uso') || null, adm_locacao: v('i_adm') || null, valor_locacao: money.i_aluguel, inicio_contrato: v('i_inicio') || null };
+    categoria: v('i_cat') || null, situacao_uso: v('i_uso') || null,
+    empreendimento: v('i_emp') || null, numero_unidade: v('i_num') || null, andar: v('i_andar') || null, configuracao: v('i_conf') || null, cidade: v('i_cid') || null, curta_temporada: v('i_ct') || null, situacao_atual: v('i_sitat') || null, adm_locacao: v('i_adm') || null, valor_locacao: money.i_aluguel, inicio_contrato: v('i_inicio') || null };
   try {
     if (ctx.id) {
       const antes = clone(S.imoveis[ctx.id]); delete antes.parcelas;
       if (data.data_compra) data.data_compra_texto = null;
+      if ((data.situacao_atual || null) !== (S.imoveis[ctx.id].situacao_atual || null)) data.situacao_atual_em = data.situacao_atual ? todayISO() : null;
       await mutateDoc(`imoveis/${ctx.id}`, d => Object.assign(d, data));
       await logHist('EDIÇÃO', ctx.id, `Imóvel ${data.nome} editado`, { antes, depois: data });
       toast('Imóvel salvo'); openSheet('imovel', ctx.id);
