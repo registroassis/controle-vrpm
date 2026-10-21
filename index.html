@@ -1978,9 +1978,12 @@ function imovelSheet(id) {
   const origemLinks = origens().filter(o => (o.imoveis || []).includes(id)).map(o => o.nome);
   const lancs = lancList().filter(l => origemLinks.includes(l.origem));
   const sl = sums(lancs);
+  if (S.imTabId !== id) { S.imTab = 'cad'; S.imTabId = id; }
+  const tabs = `<div class="seg" role="tablist" aria-label="Seções do imóvel" style="margin-bottom:4px">${[['cad', 'Cadastro e parcelas'], ['inv', 'Evolução do investimento e preço mínimo de venda']].map(([k, t]) => `<button role="tab" data-act="imTab:${k}" aria-pressed="${S.imTab === k}" aria-selected="${S.imTab === k}">${t}</button>`).join('')}</div>`;
+  if (S.imTab === 'inv') return { title: shortName(im), body: tabs + invTab(im) };
   return {
     title: shortName(im),
-    body: `
+    body: `${tabs}
       ${im.vendido ? (() => { const v = vendasList().find(x => x.imovel_id === id); const F = v && vndFin(v); return `<div class="note" style="font-size:.88rem"><b>Vendido${v ? ' em ' + fdate(v.data_venda) + ' por ' + brl(v.valor_venda) : ''}</b>${v?.comprador?.nome ? ' · ' + esc(v.comprador.nome) : ''}${F && !F.quitado ? `<br>Saldo a receber do comprador: <b>${brl(F.saldo)}</b>` : ''} <button class="btn small" data-act="go:vendas" style="margin-left:6px">Ver venda</button></div>`; })() : ''}
       <div class="btns">${s.status === 'QUITADO' ? '<span class="chip pos">quitado</span>' : '<span class="chip warn">em pagamento</span>'}<span class="chip">${esc(im.situacao_obra || '')}</span>${im.arquivado ? '<span class="chip">arquivado</span>' : ''}<span class="chip mono">${im.id}</span></div>
       <div class="kpis">
@@ -4714,6 +4717,170 @@ function vndAct(cmd, p) {
 }
 function vndSheetData(kind, args) { if (kind === 'vndPag') return vndPagForm(...args); return null; }
 
+
+/* ====================================================================== EVOLUÇÃO DO INVESTIMENTO E PREÇO MÍNIMO DE VENDA
+   Fonte dos pagamentos: as parcelas já cadastradas no imóvel (imoveis/{id}.parcelas) com valor pago.
+   Os registros originais não são alterados: a correção é calculada na tela, a cada abertura.
+   CDI: série SGS 12 do Banco Central (CDI diário, % ao dia), guardada em cache na coleção cdi_diario/{ano}
+   para que todos os usuários usem a mesma série; atualizada automaticamente quando há dado novo. */
+const INV_DEF = { pct_cdi: 100, corretagem: 6, cessao: 3 };
+S.cdi = S.cdi || { dias: null, carregando: false, erro: null, ultima: null, atualizadoEm: null, fonte: null };
+S.invSim = S.invSim || {};
+const isoBR = (iso) => iso.split('-').reverse().join('/');
+
+/* carrega o CDI diário de todos os anos necessários; usa o cache do banco e busca no BCB o que faltar */
+async function cdiCarregar(desdeISO, forcar = false) {
+  if (S.cdi.carregando) return;
+  S.cdi.carregando = true; S.cdi.erro = null; scheduleRender();
+  const hoje = todayISO(); const anoIni = Number(desdeISO.slice(0, 4)); const anoFim = Number(hoje.slice(0, 4));
+  const dias = {}; let atualizado = null; const falhas = [];
+  for (let a = anoIni; a <= anoFim; a++) {
+    let doc = null;
+    try { const s = await S.db.doc(`cdi_diario/${a}`).get(); doc = s.exists ? s.data() : null; } catch { }
+    const precisa = forcar || !doc || (a === anoFim && (doc.consultado_em || '').slice(0, 10) !== hoje) || (a < anoFim && !doc.ano_completo);
+    if (precisa) {
+      try {
+        const fim = a === anoFim ? isoBR(hoje) : `31/12/${a}`;
+        let arr = null, ult = null;
+        for (let t = 0; t < 3 && !arr; t++) { // o serviço do BCB às vezes recusa a primeira chamada: tenta até 3 vezes
+          try { const r = await fetch(`https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados?formato=json&dataInicial=01/01/${a}&dataFinal=${fim}`); if (!r.ok) throw new Error('HTTP ' + r.status); const j = await r.json(); if (!Array.isArray(j)) throw new Error('resposta inválida'); arr = j; }
+          catch (e) { ult = e; await new Promise(res => setTimeout(res, 1200 * (t + 1))); }
+        }
+        if (!arr) throw ult || new Error('sem resposta');
+        const novo = {}; arr.forEach(x => { const v = parseFloat(String(x.valor).replace(',', '.')); if (x.data && isFinite(v)) novo[x.data.split('/').reverse().join('-')] = v; });
+        if (!Object.keys(novo).length && a === anoFim && doc) throw new Error('sem dados novos');
+        // nunca apaga taxas já guardadas: só acrescenta as novas
+        const merged = { ...(doc?.dias || {}), ...novo };
+        doc = { ano: a, dias: merged, fonte: 'Banco Central do Brasil — SGS série 12 (Taxa de juros CDI, % ao dia)', consultado_em: new Date().toISOString(), ano_completo: a < anoFim };
+        if (!S.readonly) { try { await S.db.doc(`cdi_diario/${a}`).set(doc); } catch (e) { console.warn('cdi cache', e); } }
+      } catch (e) { falhas.push(a + ': ' + (e.message || e)); }
+    }
+    if (doc) { Object.assign(dias, doc.dias || {}); if (!atualizado || (doc.consultado_em || '') > atualizado) atualizado = doc.consultado_em; }
+  }
+  const datas = Object.keys(dias).sort();
+  S.cdi = { dias, datas, carregando: false, erro: falhas.length ? falhas.join(' · ') : null, ultima: datas[datas.length - 1] || null, primeira: datas[0] || null, atualizadoEm: atualizado, fonte: 'Banco Central do Brasil — SGS 12', desde: desdeISO };
+  scheduleRender();
+}
+/* fator acumulado de p% do CDI: taxas diárias desde a data do pagamento (inclusive) até a última taxa publicada (inclusive) */
+function cdiFator(dataISO, pct) {
+  const D = S.cdi.datas || []; let f = 1, n = 0;
+  for (let i = 0; i < D.length; i++) { const d = D[i]; if (d < dataISO) continue; f *= 1 + (pct / 100) * (S.cdi.dias[d] / 100); n++; }
+  return { f, n };
+}
+function invSim(im) { return { ...INV_DEF, ...(im.venda_sim || {}), ...(S.invSim[im.id] || {}) }; }
+function invCalc(im) {
+  const sim = invSim(im);
+  const ps = (im.parcelas || []).filter(p => !p.excluido && p.valor_pago != null && Number(p.valor_pago) > 0)
+    .slice().sort((a, b) => (a.data_pagamento || '9').localeCompare(b.data_pagamento || '9'));
+  const abertas = (im.parcelas || []).filter(p => !p.excluido && p.valor_pago == null);
+  const linhas = ps.map(p => {
+    const desc = `${p.tipo || 'Parcela'}${p.mes_ref ? ' · ' + String(p.mes_ref).toLowerCase() : ''}${p.ano ? ' ' + p.ano : ''}`;
+    const okData = /^\d{4}-\d{2}-\d{2}$/.test(p.data_pagamento || '');
+    if (!okData) return { p, desc, pend: 'Data do pagamento não informada' };
+    if (!S.cdi.datas?.length) return { p, desc, pend: null, semCdi: true };
+    if (p.data_pagamento < S.cdi.primeira) return { p, desc, pend: 'Sem CDI carregado para esta data' };
+    const { f, n } = cdiFator(p.data_pagamento, sim.pct_cdi);
+    const v = Number(p.valor_pago);
+    return { p, desc, f, n, pct: f - 1, corr: v * f, rend: v * (f - 1) };
+  });
+  const ok = linhas.filter(l => l.f != null);
+  const orig = ok.reduce((s, l) => s + Number(l.p.valor_pago), 0);
+  const corr = ok.reduce((s, l) => s + l.corr, 0);
+  const pend = linhas.filter(l => l.pend);
+  const custos = (Number(sim.corretagem) + Number(sim.cessao)) / 100;
+  const pmin = custos < 1 ? corr / (1 - custos) : null;
+  return { sim, linhas, ok, pend, abertas, orig, corr, rend: corr - orig, custos, pmin, origPend: pend.reduce((s, l) => s + Number(l.p.valor_pago), 0) };
+}
+function invTab(im) {
+  const id = im.id;
+  const datasPag = (im.parcelas || []).filter(p => !p.excluido && p.valor_pago != null && /^\d{4}-\d{2}-\d{2}$/.test(p.data_pagamento || '')).map(p => p.data_pagamento).sort();
+  const desde = datasPag[0] || todayISO();
+  if (!S.cdi.carregando && (!S.cdi.datas || (S.cdi.desde || '9') > desde) && !S.cdi.tentou?.[desde]) { S.cdi.tentou = { ...(S.cdi.tentou || {}), [desde]: true }; setTimeout(() => cdiCarregar(desde), 0); }
+  const C = invCalc(im); const sim = C.sim;
+  const pctS2 = (v, d = 2) => v == null || !isFinite(v) ? '—' : (v * 100).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }) + '%';
+  const cdiInfo = S.cdi.carregando ? '<span class="chip warn">carregando o CDI oficial…</span>'
+    : S.cdi.ultima ? `CDI oficial até <b>${fdate(S.cdi.ultima)}</b> (última taxa diária publicada pelo Banco Central)${S.cdi.atualizadoEm ? ' · consultado em ' + fdate(S.cdi.atualizadoEm) + ' ' + S.cdi.atualizadoEm.slice(11, 16) : ''}`
+    : '<span class="chip neg">CDI ainda não carregado</span>';
+  const P = C.pmin; const venda = (preco) => { const b = Number(preco) || 0; const cor = b * sim.corretagem / 100, ces = b * sim.cessao / 100; const liq = b - cor - ces; return { b, cor, ces, custos: cor + ces, liq, dif: liq - C.corr, rent: C.corr ? liq / C.corr - 1 : null }; };
+  const M = P != null ? venda(P) : null;
+  const preco = sim.preco_anuncio; const V = preco ? venda(preco) : null;
+  const memo = (n, t, v, cls = '', sub = '') => `<tr class="${cls}"><td style="white-space:normal"><span class="mute">${n}.</span> ${t}${sub ? `<div class="mute" style="font-size:.78rem">${sub}</div>` : ''}</td><td class="${v < 0 ? 'neg' : ''}">${brl(v)}</td></tr>`;
+  return `
+  ${im.vendido ? '<div class="note">Imóvel já vendido: os valores abaixo são só informativos.</div>' : ''}
+  <div class="note" style="font-size:.85rem;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between"><span>${cdiInfo}</span>${S.cdi.carregando ? '' : `<button class="btn small" data-act="invCdi:${id}">${icon('restore')}Atualizar CDI</button>`}</div>
+  ${S.cdi.erro ? `<div class="note warn" style="font-size:.85rem">Não foi possível atualizar parte da série no Banco Central (${esc(S.cdi.erro)}). Os cálculos usam somente as taxas oficiais já guardadas${S.cdi.ultima ? ', até ' + fdate(S.cdi.ultima) : ''}; nenhuma taxa é estimada.</div>` : ''}
+  <div class="kpis">
+    <div class="kpi"><div class="eyebrow">Total investido (pago)</div><div class="v">${brl(C.orig)}</div><div class="s">${C.ok.length} pagamento(s) com data${C.pend.length ? ` · ${C.pend.length} pendente(s)` : ''}</div></div>
+    <div class="kpi"><div class="eyebrow">Corrigido a ${sim.pct_cdi}% do CDI</div><div class="v">${S.cdi.datas?.length ? brl(C.corr) : '—'}</div><div class="s">rendimento ${S.cdi.datas?.length ? brl(C.rend) : '—'}${C.orig ? ' · ' + pctS2(C.rend / C.orig) : ''}</div></div>
+    <div class="kpi"><div class="eyebrow">Preço mínimo de venda</div><div class="v pos">${S.cdi.datas?.length && P ? brl(P) : '—'}</div><div class="s">já cobrindo ${sim.corretagem}% de corretagem e ${sim.cessao}% de cessão</div></div>
+  </div>
+  ${C.pend.length ? `<div class="note warn" style="font-size:.85rem"><b>Informação pendente:</b> ${C.pend.map(l => `${esc(l.desc)} (${brl(l.p.valor_pago)}) — ${esc(l.pend)}`).join('; ')}. Esses valores <b>não</b> entram no total corrigido até a data ser informada na parcela.</div>` : ''}
+  ${C.abertas.length ? `<p class="mute" style="font-size:.82rem;margin:0">${C.abertas.length} parcela(s) ainda em aberto não entram no cálculo: só o que já foi pago rende CDI.</p>` : ''}
+  <section class="panel"><div class="panel-h"><h2>Pagamentos corrigidos pelo CDI</h2><span class="mute" style="font-size:.8rem">cada pagamento corrigido desde a própria data</span></div>
+    <div class="tablewrap"><table><thead><tr><th>Data do pagamento</th><th style="text-align:left">Parcela</th><th>Valor pago</th><th>CDI acumulado</th><th>Rendimento</th><th>Valor corrigido</th></tr></thead><tbody>
+    ${C.linhas.map(l => `<tr><td>${l.p.data_pagamento ? fdate(l.p.data_pagamento) : '<span class="warnc">a informar</span>'}</td><td style="text-align:left">${esc(l.desc)}</td><td>${brl(l.p.valor_pago)}</td>
+      ${l.pend ? `<td colspan="3" class="warnc" style="text-align:left">${esc(l.pend)}</td>` : l.semCdi ? '<td colspan="3" class="mute">aguardando o CDI</td>' : `<td title="${l.n} dia(s) útil(eis) · fator ${l.f.toFixed(8)}">${pctS2(l.pct)}</td><td>${brl(l.rend)}</td><td><b>${brl(l.corr)}</b></td>`}</tr>`).join('') || '<tr><td colspan="6" class="mute">Nenhum pagamento registrado nas parcelas deste imóvel.</td></tr>'}
+    ${C.ok.length ? `<tr class="total"><td>Total</td><td></td><td>${brl(C.orig)}</td><td>${C.orig ? pctS2(C.rend / C.orig) : '—'}</td><td>${brl(C.rend)}</td><td>${brl(C.corr)}</td></tr>` : ''}
+    </tbody></table></div></section>
+  <section class="panel"><div class="panel-h"><h2>Premissas</h2><span class="mute" style="font-size:.8rem">altere para simular outras condições</span></div>
+    <div class="f2" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <div class="f"><label for="inv_pct">Rentabilidade desejada (% do CDI)</label><input type="text" inputmode="decimal" id="inv_pct" value="${String(sim.pct_cdi).replace('.', ',')}"></div>
+      <div class="f"><label for="inv_cor">Corretagem (% do preço)</label><input type="text" inputmode="decimal" id="inv_cor" value="${String(sim.corretagem).replace('.', ',')}"></div>
+      <div class="f"><label for="inv_ces">Taxa de cessão (% do preço)</label><input type="text" inputmode="decimal" id="inv_ces" value="${String(sim.cessao).replace('.', ',')}"></div>
+    </div>
+    ${S.readonly ? '' : `<div class="btns" style="margin-top:8px"><button class="btn small" data-act="invSalvar:${id}">${icon('check')}Salvar premissas deste imóvel</button>${im.venda_sim ? `<button class="btn small" data-act="invPadrao:${id}">Voltar ao padrão (100% CDI, 6% + 3%)</button>` : ''}</div>`}
+  </section>
+  <section class="panel"><div class="panel-h"><h2>Preço mínimo de venda — memória de cálculo</h2></div>
+    ${M ? `<div class="tablewrap"><table><tbody>
+      ${memo(1, 'Total originalmente investido', C.orig)}
+      ${memo(2, `Total corrigido a ${sim.pct_cdi}% do CDI`, C.corr)}
+      ${memo(3, '<b>Preço mínimo de venda (antes dos custos)</b>', P, 'total', `total corrigido ÷ ${(1 - C.custos).toLocaleString('pt-BR', { maximumFractionDigits: 4 })} (100% − ${sim.corretagem}% − ${sim.cessao}%)`)}
+      ${memo(4, `(−) Corretagem de ${sim.corretagem}%`, -M.cor)}
+      ${memo(5, `(−) Taxa de cessão de ${sim.cessao}%`, -M.ces)}
+      ${memo(6, 'Total dos custos da venda', -M.custos)}
+      ${memo(7, '<b>Valor líquido estimado a receber</b>', M.liq, 'total')}
+      ${memo(8, 'Ganho ou perda em relação ao capital corrigido', Math.abs(M.dif) < 0.005 ? 0 : M.dif, '', 'no preço mínimo o líquido empata com o capital corrigido')}
+    </tbody></table></div>` : '<p class="mute">Aguardando o CDI oficial e os pagamentos com data para calcular.</p>'}
+  </section>
+  <section class="panel"><div class="panel-h"><h2>Simulador de preço de anúncio</h2></div>
+    <div class="f" style="max-width:280px"><label for="inv_preco">Preço de venda desejado (R$)</label><input class="money" type="text" inputmode="decimal" id="inv_preco" value="${preco ? moneyInput(preco) : ''}" placeholder="ex.: 480.000,00"></div>
+    ${V ? `${P && V.b < P - 0.005 ? `<div class="note warn" style="margin-top:10px"><b>Abaixo do preço mínimo.</b> Faltam <b>${brl(P - V.b)}</b> no preço de venda (preço mínimo ${brl(P)}) para empatar com ${sim.pct_cdi}% do CDI.</div>` : P ? `<div class="note" style="margin-top:10px"><b>Acima do preço mínimo</b> em ${brl(V.b - P)}.</div>` : ''}
+    <div class="tablewrap" style="margin-top:10px"><table><tbody>
+      <tr><td>Valor bruto da venda</td><td>${brl(V.b)}</td></tr>
+      <tr><td>(−) Corretagem (${sim.corretagem}%)</td><td>${brl(-V.cor)}</td></tr>
+      <tr><td>(−) Taxa de cessão (${sim.cessao}%)</td><td>${brl(-V.ces)}</td></tr>
+      <tr class="total"><td>Valor líquido após os custos</td><td>${brl(V.liq)}</td></tr>
+      <tr><td>Total investido corrigido a ${sim.pct_cdi}% do CDI</td><td>${brl(C.corr)}</td></tr>
+      <tr class="total"><td>Diferença (líquido − investimento corrigido)</td><td class="${V.dif < 0 ? 'neg' : 'pos'}">${brl(V.dif)}</td></tr>
+      <tr><td>Rentabilidade efetiva sobre o capital corrigido</td><td class="${V.rent < 0 ? 'neg' : 'pos'}">${pctS2(V.rent)}</td></tr>
+      <tr><td class="mute">Ganho sobre o valor originalmente pago (sem correção)</td><td class="mute">${brl(V.liq - C.orig)} · ${C.orig ? pctS2(V.liq / C.orig - 1) : '—'}</td></tr>
+    </tbody></table></div>` : '<p class="mute" style="font-size:.85rem">Digite um preço e tecle Enter para ver o resultado.</p>'}
+  </section>
+  <details class="panel" style="padding:14px 16px"><summary style="cursor:pointer;font-weight:600">Metodologia</summary>
+    <div class="mute" style="font-size:.85rem;line-height:1.55;margin-top:8px">
+    <p><b>Pagamentos:</b> parcelas deste imóvel com valor pago, exatamente como estão cadastradas (data e valor efetivamente pagos). Nada é copiado nem alterado; parcelas em aberto não entram. Lançamentos de "Investimento" da VRPM não são somados de novo, porque repetem as mesmas parcelas.</p>
+    <p><b>CDI:</b> série oficial nº 12 do Sistema Gerenciador de Séries do Banco Central (Taxa de juros – CDI, % ao dia, dias úteis). As taxas ficam guardadas no banco do sistema e são completadas automaticamente quando o Banco Central publica dias novos; taxas já guardadas nunca são substituídas. Se a consulta falhar, o sistema usa só as taxas já guardadas e mostra a última data disponível — não há estimativa.</p>
+    <p><b>Correção:</b> cada pagamento é corrigido separadamente: fator = ∏ (1 + p × CDIdia ÷ 100), multiplicando a taxa de cada dia útil desde a data do pagamento (inclusive) até a última taxa publicada (inclusive); p = percentual do CDI escolhido (100% = 1). Valor corrigido = valor pago × fator. Rendimento = valor corrigido − valor pago.</p>
+    <p><b>Preço mínimo:</b> preço = total corrigido ÷ (1 − corretagem − cessão). Com 6% + 3%, preço = total corrigido ÷ 0,91. Assim, depois de pagar os custos da venda, sobra exatamente o capital corrigido.</p>
+    <p>Não considera imposto sobre ganho de capital, despesas de manutenção, aluguéis recebidos nem custos de cartório e ITBI que não estejam nas parcelas.</p></div></details>`;
+}
+async function invAct(cmd, p) {
+  const id = p[0]; const im = S.imoveis[id];
+  switch (cmd) {
+    case 'invCdi': S.cdi.tentou = {}; return cdiCarregar(S.cdi.desde || todayISO(), true);
+    case 'invSalvar': { const sim = invSim(im); try { await mutateDoc(`imoveis/${id}`, d => { d.venda_sim = { pct_cdi: Number(sim.pct_cdi), corretagem: Number(sim.corretagem), cessao: Number(sim.cessao), preco_anuncio: sim.preco_anuncio || null, salvo_em: new Date().toISOString() }; }); delete S.invSim[id]; await logHist('EDIÇÃO', id, `Preço mínimo de venda: premissas salvas (${sim.pct_cdi}% do CDI, corretagem ${sim.corretagem}%, cessão ${sim.cessao}%)`); toast('Premissas salvas'); } catch (e) { toast(dbErr(e)); } return; }
+    case 'invPadrao': try { await mutateDoc(`imoveis/${id}`, d => { d.venda_sim = { ...INV_DEF, preco_anuncio: d.venda_sim?.preco_anuncio || null, salvo_em: new Date().toISOString() }; }); delete S.invSim[id]; toast('Premissas padrão'); } catch (e) { toast(dbErr(e)); } return;
+  }
+}
+function invWire() {
+  const id = S.sheet?.kind === 'imovel' && S.imTab === 'inv' ? S.sheet.args?.[0] : null; if (!id) return;
+  const num = (el, pct) => { const t = (el.value || '').trim(); if (!t) return null; const v = pct ? parseFloat(t.replace(/\./g, '').replace(',', '.')) : parseMoney(t); return isFinite(v) && v >= 0 ? v : NaN; };
+  [['inv_pct', 'pct_cdi', true], ['inv_cor', 'corretagem', true], ['inv_ces', 'cessao', true], ['inv_preco', 'preco_anuncio', false]].forEach(([el, k, pct]) => {
+    const e = $('#' + el); if (!e) return;
+    e.addEventListener('change', () => { const v = num(e, pct); if (Number.isNaN(v)) return toast('Valor inválido'); if (k !== 'preco_anuncio' && v == null) return; if (k !== 'preco_anuncio' && k !== 'pct_cdi' && v >= 50) return toast('Percentual alto demais'); S.invSim[id] = { ...(S.invSim[id] || {}), [k]: v }; render(); });
+  });
+}
+
 /* ====================================================================== sheets / toasts / confirm */
 function openSheet(kind, ...args) { S.sheet = { kind, args }; S.sheetForm = null; render(); }
 function closeSheet() { S.sheet = null; S.sheetForm = null; S.dirty = false; render(); }
@@ -4744,7 +4911,7 @@ function sheetData() {
 function sheetHTML() {
   const d = sheetData(); if (!d) return '';
   S.sheetCtx = d.ctx || {}; S.sheetForm = d.form || null;
-  return `<div class="scrim" data-act="scrim"><div class="sheet${['stRevisao', 'stMes', 'stExpl', 'pendFix', 'locLista', 'inDet'].includes(S.sheet.kind) ? ' wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(d.title)}">
+  return `<div class="scrim" data-act="scrim"><div class="sheet${['stRevisao', 'stMes', 'stExpl', 'pendFix', 'locLista', 'inDet'].includes(S.sheet.kind) || (S.sheet.kind === 'imovel' && S.imTab === 'inv') ? ' wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(d.title)}">
     <div class="sheet-h"><h2>${esc(d.title)}</h2><button class="iconbtn" data-act="closeSheet" aria-label="Fechar">${icon('x')}</button></div>
     <div class="sheet-b">${d.body}</div>${d.foot ? `<div class="sheet-f">${d.foot}</div>` : ''}</div></div>`;
 }
@@ -4778,7 +4945,7 @@ function showErrs(errs) {
 /* ====================================================================== eventos */
 function afterRender() {
   const bind = (id, k, ev = 'change') => { const el = $('#' + id); if (el) el.addEventListener(ev, () => { S.f[k] = el.value; render(); if (ev === 'input') { const e2 = $('#' + id); e2.focus(); e2.setSelectionRange(e2.value.length, e2.value.length); } }); };
-  bind('piAno', 'piAno'); bind('piMes', 'piMes');
+  bind('piAno', 'piAno'); bind('piMes', 'piMes'); invWire();
   bind('locAno', 'locAno'); bind('locMes', 'locMes'); bind('locImF', 'locImF'); bind('locImSel', 'locIm');
   bind('stAno', 'stAno'); bind('stMes', 'stMes'); bind('stIm', 'stIm'); bind('stMet', 'stMet');
   if (S.sheet?.kind === 'stRevisao') stRevisaoWire();
@@ -4815,6 +4982,7 @@ async function onAppClick(e) {
     case 'go': return go(p[0]);
     case 'search': return openSheet('search');
     case 'closeSheet': return closeSheet();
+    case 'imTab': S.imTab = p[0]; return render();
     case 'imLimpar': S.f.imQ = ''; S.f.imUso = ''; S.f.imCat = ''; S.f.imProp = ''; S.f.imConf = ''; return render();
     case 'novoLanc': return W && openSheet('lancForm', null);
     case 'lanc': return openSheet('lancForm', p[0]);
@@ -4871,7 +5039,7 @@ async function onAppClick(e) {
     case 'exportBanco': return exportBanco();
     case 'webSair': return window.VRPM_WEB?.sair();
     case 'webUsuarios': return window.VRPM_WEB?.usuarios();
-    default: if (cmd.startsWith('st')) return stAct(cmd, p); if (cmd.startsWith('loc')) return locAct(cmd, p); if (cmd.startsWith('vnd')) return vndAct(cmd, p); if (cmd.startsWith('pi')) return piAct(cmd, p); return;
+    default: if (cmd.startsWith('inv')) return invAct(cmd, p); if (cmd.startsWith('st')) return stAct(cmd, p); if (cmd.startsWith('loc')) return locAct(cmd, p); if (cmd.startsWith('vnd')) return vndAct(cmd, p); if (cmd.startsWith('pi')) return piAct(cmd, p); return;
     case 'exportJson': return exportJson();
     case 'applyImport': return applyImport();
     case 'backupAgora': try { toast('Fazendo cópia…', 0); await makeBackup('Cópia manual'); toast('Cópia criada'); loadBackupList(); } catch (er) { toast(dbErr(er)); } return;
