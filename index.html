@@ -1924,9 +1924,10 @@ VIEWS.imoveis = () => {
     if (f === 'quitados' && s.status !== 'QUITADO') return false;
     if (f === 'obra' && i.situacao_obra === 'ENTREGUE') return false;
     if (S.f.imProp && i.proprietario !== S.f.imProp) return false;
+    if (S.f.imConf && (i.configuracao || '') !== S.f.imConf) return false;
     if (S.f.imCat && (S.f.imCat === '__sem' ? i.categoria : i.categoria !== S.f.imCat)) return false;
     if (S.f.imUso && (S.f.imUso === '__sem' ? i.situacao_uso : i.situacao_uso !== S.f.imUso)) return false;
-    if (q && !norm([i.id, i.nome, i.unidade, i.endereco, i.proprietario, i.matricula, i.grupo, i.categoria, usoLabel(i.situacao_uso), i.adm_locacao].join(' ')).includes(q)) return false;
+    if (q && !norm([i.id, i.nome, i.unidade, i.endereco, i.proprietario, i.matricula, i.grupo, i.categoria, usoLabel(i.situacao_uso), i.adm_locacao, i.configuracao, i.empreendimento, i.numero_unidade, i.curta_temporada].join(' ')).includes(q)) return false;
     return true;
   });
   const ordNome = (a, b) => baseName(a[0]).localeCompare(baseName(b[0]), 'pt-BR', { numeric: true, sensitivity: 'base' });
@@ -1940,10 +1941,11 @@ VIEWS.imoveis = () => {
     <select id="imUso" aria-label="Situação de uso"><option value="">Todas as situações de uso</option>${USOS.map(u => `<option value="${u}" ${u === S.f.imUso ? 'selected' : ''}>${usoLabel(u)}</option>`).join('')}<option value="__sem" ${S.f.imUso === '__sem' ? 'selected' : ''}>Sem situação de uso</option></select>
     <select id="imCat" aria-label="Classificação"><option value="">Todas as classificações</option>${CATS.map(c => `<option value="${c}" ${c === S.f.imCat ? 'selected' : ''}>${c} (${imList().filter(i => !i.arquivado && !i.vendido && i.categoria === c).length})</option>`).join('')}<option value="__sem" ${S.f.imCat === '__sem' ? 'selected' : ''}>Sem classificação (${imList().filter(i => !i.arquivado && !i.vendido && !i.categoria).length})</option></select>
     <select id="imOrd" aria-label="Ordenar">${[['nome', 'Ordem: nome (A–Z)'], ['uso', 'Ordem: situação de uso'], ['venc', 'Ordem: próximo vencimento'], ['saldo', 'Ordem: maior saldo em aberto'], ['pago', 'Ordem: maior total pago']].map(([k, t]) => `<option value="${k}" ${k === (S.f.imOrd || 'nome') ? 'selected' : ''}>${t}</option>`).join('')}</select>
+    <select id="imConf" aria-label="Configuração"><option value="">Todas as configurações</option>${[...new Set(imList(true).map(i => i.configuracao).filter(Boolean))].sort().map(c => `<option ${c === S.f.imConf ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
     <select id="imProp" aria-label="Proprietário"><option value="">Todos os proprietários</option>${props.map(p => `<option ${p === S.f.imProp ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select>
     ${S.readonly ? '' : `<button class="btn primary" data-act="novoImovel">${icon('plus')}Novo imóvel</button>`}
   </div>
-  <div class="filters"><div class="seg" role="group" aria-label="Filtro">${[['todos', 'Todos'], ['pagamento', 'Em pagamento'], ['quitados', 'Quitados'], ['obra', 'Em obra'], ['vendidos', 'Vendidos'], ['arquivados', 'Arquivados']].map(([k, t]) => `<button data-imf="${k}" aria-pressed="${f === k}">${t}</button>`).join('')}</div><span class="mute" style="font-size:.85rem">${list.length} imóve${list.length === 1 ? 'l' : 'is'}</span>${(() => { const at = [S.f.imQ && `busca "${esc(S.f.imQ)}"`, S.f.imUso && `situação de uso: ${S.f.imUso === '__sem' ? 'sem situação de uso' : esc(usoLabel(S.f.imUso))}`, S.f.imCat && `classificação: ${S.f.imCat === '__sem' ? 'sem classificação' : esc(S.f.imCat)}`, S.f.imProp && `proprietário: ${esc(S.f.imProp)}`].filter(Boolean); return at.length ? `<span class="chip warn">filtrado por ${at.join(' · ')}</span><button class="btn small" data-act="imLimpar">${icon('x')}Limpar filtros</button>` : ''; })()}</div>
+  <div class="filters"><div class="seg" role="group" aria-label="Filtro">${[['todos', 'Todos'], ['pagamento', 'Em pagamento'], ['quitados', 'Quitados'], ['obra', 'Em obra'], ['vendidos', 'Vendidos'], ['arquivados', 'Arquivados']].map(([k, t]) => `<button data-imf="${k}" aria-pressed="${f === k}">${t}</button>`).join('')}</div><span class="mute" style="font-size:.85rem">${list.length} imóve${list.length === 1 ? 'l' : 'is'}</span>${(() => { const at = [S.f.imQ && `busca "${esc(S.f.imQ)}"`, S.f.imUso && `situação de uso: ${S.f.imUso === '__sem' ? 'sem situação de uso' : esc(usoLabel(S.f.imUso))}`, S.f.imCat && `classificação: ${S.f.imCat === '__sem' ? 'sem classificação' : esc(S.f.imCat)}`, S.f.imProp && `proprietário: ${esc(S.f.imProp)}`, S.f.imConf && `configuração: ${esc(S.f.imConf)}`].filter(Boolean); return at.length ? `<span class="chip warn">filtrado por ${at.join(' · ')}</span><button class="btn small" data-act="imLimpar">${icon('x')}Limpar filtros</button>` : ''; })()}</div>
   ${usoResumo()}
   ${Object.entries(grupos).map(([g, arr]) => `
     <div class="section"><span class="eyebrow">${esc(g)} · ${arr.length}</span>
@@ -1951,6 +1953,8 @@ VIEWS.imoveis = () => {
       <button class="card" data-act="imovel:${i.id}">
         <div class="head"><div class="t">${catChip(i)}${esc(baseName(i))}</div>${i.vendido ? '<span class="chip acc">vendido</span>' : s.status === 'QUITADO' ? '<span class="chip pos">quitado</span>' : '<span class="chip warn">em pagamento</span>'}</div>
         <div class="sub mute" style="font-size:.82rem">${esc(i.unidade || '')}${i.proprietario ? ' · ' + esc(i.proprietario) : ''}${i.situacao_obra !== 'ENTREGUE' ? ` · <span class="${obraAtrasada(i) ? 'neg' : 'warnc'}">${esc((i.situacao_obra || '').toLowerCase())}${i.previsao_entrega ? ' até ' + fdate(i.previsao_entrega) : ''}</span>` : ''}</div>
+        ${i.configuracao || i.metragem || i.andar ? `<div class="sub" style="font-size:.85rem;font-weight:600">${[i.configuracao, i.metragem, i.andar].filter(Boolean).map(esc).join(' · ')}</div>` : ''}
+        ${i.curta_temporada ? `<div class="btns" style="gap:6px"><span class="chip ${/^não/i.test(i.curta_temporada) ? 'neg' : 'pos'}">Curta temporada: ${esc(/^não/i.test(i.curta_temporada) ? 'não permitida' : /permit/i.test(i.curta_temporada) ? 'permitida' : i.curta_temporada)}</span></div>` : ''}
         ${i.situacao_uso || i.adm_locacao ? `<div class="btns" style="gap:6px">${i.situacao_uso ? `<span class="chip ${usoCls(i.situacao_uso)}">${usoLabel(i.situacao_uso)}</span>` : ''}${i.adm_locacao ? `<span class="chip">${esc(i.adm_locacao)}</span>` : ''}${i.situacao_uso === 'LOCAÇÃO MENSAL' && i.valor_locacao ? `<span class="chip acc">${brl(i.valor_locacao)}/mês</span>` : ''}</div>` : ''}
         <div class="prog"><div class="bar ${s.status === 'QUITADO' ? 'pos' : ''}"><i style="width:${(s.pctPagas * 100).toFixed(1)}%"></i></div><span class="mute num" style="font-size:.8rem">${s.nPagas}/${s.total}</span></div>
         <dl><div><dt>Total pago</dt><dd>${brl(s.pago)}</dd></div><div><dt>${s.status === 'QUITADO' ? 'Contrato' : 'Saldo em aberto'}</dt><dd>${s.status === 'QUITADO' ? brl(i.valor_contrato) : brl(s.saldo)}</dd></div>
@@ -4778,7 +4782,7 @@ function afterRender() {
   bind('locAno', 'locAno'); bind('locMes', 'locMes'); bind('locImF', 'locImF'); bind('locImSel', 'locIm');
   bind('stAno', 'stAno'); bind('stMes', 'stMes'); bind('stIm', 'stIm'); bind('stMet', 'stMet');
   if (S.sheet?.kind === 'stRevisao') stRevisaoWire();
-  bind('imQ', 'imQ', 'input'); bind('imProp', 'imProp'); bind('imOrd', 'imOrd'); bind('imCat', 'imCat'); bind('imUso', 'imUso'); bind('lanAno', 'lanAno'); bind('lanMes', 'lanMes'); bind('lanOrigem', 'lanOrigem'); bind('lanQ', 'lanQ', 'input'); bind('relAno', 'relAno');
+  bind('imQ', 'imQ', 'input'); bind('imProp', 'imProp'); bind('imConf', 'imConf'); bind('imOrd', 'imOrd'); bind('imCat', 'imCat'); bind('imUso', 'imUso'); bind('lanAno', 'lanAno'); bind('lanMes', 'lanMes'); bind('lanOrigem', 'lanOrigem'); bind('lanQ', 'lanQ', 'input'); bind('relAno', 'relAno');
   if (S.sheet?.kind === 'search') { const g = $('#gq'); g.focus(); g.addEventListener('input', () => runSearch(g.value)); runSearch(g.value); }
   if (S.sheetForm === 'lanc') lancFormWire();
   if (S.sheetForm === 'vndpag') vndPagWire();
@@ -4800,7 +4804,7 @@ async function onAppClick(e) {
   if (t.dataset.stmodo) { S.stImp.modo = t.dataset.stmodo; S.stImp.cmp = null; return render(); }
   if (t.dataset.uso) { S.f.imUso = S.f.imUso === t.dataset.uso ? '' : t.dataset.uso; return render(); }
   if (t.dataset.go) return go(t.dataset.go);
-  if (t.dataset.imf) { S.f.imF = t.dataset.imf; if (t.dataset.imf === 'todos') { S.f.imQ = ''; S.f.imUso = ''; S.f.imCat = ''; S.f.imProp = ''; } return render(); }
+  if (t.dataset.imf) { S.f.imF = t.dataset.imf; if (t.dataset.imf === 'todos') { S.f.imQ = ''; S.f.imUso = ''; S.f.imCat = ''; S.f.imProp = ''; S.f.imConf = ''; } return render(); }
   if (t.dataset.lantipo !== undefined && t.dataset.lantipo !== null && t.hasAttribute('data-lantipo')) { S.f.lanTipo = t.dataset.lantipo; return render(); }
   if (t.dataset.ltipo) { t.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === t))); return lancFormWire(); }
   const a = t.dataset.act; if (!a) return;
@@ -4811,7 +4815,7 @@ async function onAppClick(e) {
     case 'go': return go(p[0]);
     case 'search': return openSheet('search');
     case 'closeSheet': return closeSheet();
-    case 'imLimpar': S.f.imQ = ''; S.f.imUso = ''; S.f.imCat = ''; S.f.imProp = ''; return render();
+    case 'imLimpar': S.f.imQ = ''; S.f.imUso = ''; S.f.imCat = ''; S.f.imProp = ''; S.f.imConf = ''; return render();
     case 'novoLanc': return W && openSheet('lancForm', null);
     case 'lanc': return openSheet('lancForm', p[0]);
     case 'saveLanc': return saveLanc(S.sheetCtx);
