@@ -1741,9 +1741,12 @@ function go(v) { S.view = v; S.sheet = null; render(); window.scrollTo(0, 0); }
 function render() {
   const app = $('#app');
   const openPend = pendencias().filter(p => p.status === 'ABERTA').length;
-  const titles = { loc_rank: 'Ranking de rendimento', porimovel: 'Recebimentos e despesas por imóvel', vendas: 'Vendas de imóveis', loc: 'Painel de locação', loc_im: 'Desempenho do imóvel', st: 'Locações de curta temporada', st_import: 'Importar relatório PDF', st_rep: 'Repasses do anfitrião', st_hist: 'Histórico mensal por imóvel', st_comp: 'Comparativo de desempenho', st_cfg: 'Cadastro e CDI', empresa: 'Dados da VRPM', inicio: 'Início', imoveis: 'Imóveis', lancamentos: 'Lançamentos', contas: 'Contas fixas', relatorios: 'Relatórios', mais: 'Mais', pendencias: 'Pendências', backup: 'Planilha e backup', indices: 'Índices INCC-DI', origens: 'Origens dos lançamentos', historico: 'Histórico', lixeira: 'Lixeira', manual: 'Manual rápido', receb: 'Recebíveis manuais', conferencia: 'Conferência da migração' };
+  const titles = { dono: 'Painel do gestor', loc_rank: 'Ranking de rendimento', porimovel: 'Recebimentos e despesas por imóvel', vendas: 'Vendas de imóveis', loc: 'Painel de locação', loc_im: 'Desempenho do imóvel', st: 'Locações de curta temporada', st_import: 'Importar relatório PDF', st_rep: 'Repasses do anfitrião', st_hist: 'Histórico mensal por imóvel', st_comp: 'Comparativo de desempenho', st_cfg: 'Cadastro e CDI', empresa: 'Dados da VRPM', inicio: 'Início', imoveis: 'Imóveis', lancamentos: 'Lançamentos', contas: 'Contas fixas', relatorios: 'Relatórios', mais: 'Mais', pendencias: 'Pendências', backup: 'Planilha e backup', indices: 'Índices INCC-DI', origens: 'Origens dos lançamentos', historico: 'Histórico', lixeira: 'Lixeira', manual: 'Manual rápido', receb: 'Recebíveis manuais', conferencia: 'Conferência da migração' };
+  if (ready()) donoModoInicial();
+  if (ready() && !S.modo) { app.innerHTML = donoEscolhaHTML(); return; }
+  const DONO = S.modo === 'dono';
   const body = !ready() ? loadingView() : (VIEWS[S.view] || VIEWS.inicio)();
-  const SUBT = { loc_rank: 'Rendimento líquido de cada locação, mês a mês e no ano', porimovel: 'Tabela por imóvel com filtro de mês e ano', vendas: 'Escrituras de venda e saldo a receber dos compradores', loc: 'Curta temporada e locação mensal: receitas, despesas e rendimento líquido', loc_im: 'Receitas, despesas e rendimento líquido mês a mês', st: 'Desempenho, repasses e rentabilidade comparada ao CDI', st_import: 'Leia o relatório mensal do anfitrião e confira antes de gravar', st_rep: 'Quanto cada anfitrião deve depositar e o que já foi recebido', st_hist: 'Mês a mês, como nas abas Rentabilidade e Balanço mensal', st_comp: 'Imóveis lado a lado, mês a mês', st_cfg: 'Parâmetros de cada imóvel e CDI mensal', empresa: 'Cadastro da empresa: razão social, CNPJ e contatos', inicio: new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), imoveis: 'Carteira, parcelas e situação de uso', lancamentos: 'Receitas, despesas e investimentos da VRPM', contas: 'Contas recorrentes e situação do mês', relatorios: 'Balanço, gráficos, recebíveis e carteira', mais: 'Cadastros, segurança e ajuda', pendencias: 'Dados da planilha original que precisam de confirmação', backup: 'Exportação, importação e cópias de segurança', indices: 'Índices usados no reajuste das parcelas', origens: 'Cadastro das origens e vínculo com imóveis', historico: 'Registro de todas as alterações', lixeira: 'Itens excluídos, prontos para restaurar', manual: 'Como usar no dia a dia', receb: 'Valores de locação fora das movimentações', conferencia: 'Antes × depois da migração da planilha' };
+  const SUBT = { dono: 'Patrimônio, renda e o que pede decisão', loc_rank: 'Rendimento líquido de cada locação, mês a mês e no ano', porimovel: 'Tabela por imóvel com filtro de mês e ano', vendas: 'Escrituras de venda e saldo a receber dos compradores', loc: 'Curta temporada e locação mensal: receitas, despesas e rendimento líquido', loc_im: 'Receitas, despesas e rendimento líquido mês a mês', st: 'Desempenho, repasses e rentabilidade comparada ao CDI', st_import: 'Leia o relatório mensal do anfitrião e confira antes de gravar', st_rep: 'Quanto cada anfitrião deve depositar e o que já foi recebido', st_hist: 'Mês a mês, como nas abas Rentabilidade e Balanço mensal', st_comp: 'Imóveis lado a lado, mês a mês', st_cfg: 'Parâmetros de cada imóvel e CDI mensal', empresa: 'Cadastro da empresa: razão social, CNPJ e contatos', inicio: new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), imoveis: 'Carteira, parcelas e situação de uso', lancamentos: 'Receitas, despesas e investimentos da VRPM', contas: 'Contas recorrentes e situação do mês', relatorios: 'Balanço, gráficos, recebíveis e carteira', mais: 'Cadastros, segurança e ajuda', pendencias: 'Dados da planilha original que precisam de confirmação', backup: 'Exportação, importação e cópias de segurança', indices: 'Índices usados no reajuste das parcelas', origens: 'Cadastro das origens e vínculo com imóveis', historico: 'Registro de todas as alterações', lixeira: 'Itens excluídos, prontos para restaurar', manual: 'Como usar no dia a dia', receb: 'Valores de locação fora das movimentações', conferencia: 'Antes × depois da migração da planilha' };
   const SIDE = [
     ['Visão geral', [['inicio', 'Início', 'home'], ['porimovel', 'Por imóvel', 'list'], ['relatorios', 'Relatórios', 'chart']]],
     ['Operação', [['imoveis', 'Imóveis', 'building'], ['lancamentos', 'Lançamentos', 'list'], ['contas', 'Contas fixas', 'bill'], ['vendas', 'Vendas', 'coin']]],
@@ -1752,35 +1755,37 @@ function render() {
     ['Segurança', [['backup', 'Planilha e backup', 'shield'], ['historico', 'Histórico', 'history'], ['lixeira', 'Lixeira', 'trash']]],
     ['Ajuda', [['manual', 'Manual rápido', 'book'], ['conferencia', 'Conferência', 'check']]],
   ];
-  const grp = (SIDE.find(([, it]) => it.some(([k]) => k === S.view || (S.view === 'loc_im' && k === 'loc'))) || ['Visão geral'])[0];
+  const SIDEV = DONO ? DONO_SIDE : SIDE;
+  const grp = (SIDEV.find(([, it]) => it.some(([k]) => k === S.view || (S.view === 'loc_im' && k === 'loc'))) || ['Visão geral'])[0];
   app.innerHTML = `
   <div class="app${S.collapsed ? ' collapsed' : ''}">
     <nav class="side" aria-label="Menu">
       <div class="brand"><div class="brand-mark" aria-hidden="true">VR</div><div class="brand-txt"><b>Controle VRPM</b><small>${esc(empresa().nome_fantasia || 'Administração de Imóveis')}</small></div>
         <button class="side-toggle" data-act="sideToggle" aria-label="${S.collapsed ? 'Expandir menu' : 'Recolher menu'}" title="${S.collapsed ? 'Expandir menu' : 'Recolher menu'}">${icon('back')}</button></div>
       <div class="side-scroll">
-      ${SIDE.map(([g, items]) => `<div class="side-group"><div class="side-label">${g}</div>${items.map(([k, t, i]) => `<button class="nav-btn" data-go="${k}" title="${esc(t)}" ${S.view === k || (S.view === 'loc_im' && k === 'loc') ? 'aria-current="page"' : ''}>${icon(i)}<span class="nav-t">${t}</span>${k === 'pendencias' && openPend ? `<span class="badge">${openPend}</span>` : ''}</button>`).join('')}</div>`).join('')}
+      ${SIDEV.map(([g, items]) => `<div class="side-group"><div class="side-label">${g}</div>${items.map(([k, t, i]) => `<button class="nav-btn" data-go="${k}" title="${esc(t)}" ${S.view === k || (S.view === 'loc_im' && k === 'loc') ? 'aria-current="page"' : ''}>${icon(i)}<span class="nav-t">${t}</span>${k === 'pendencias' && openPend ? `<span class="badge">${openPend}</span>` : ''}</button>`).join('')}</div>`).join('')}
       </div>
+      <div class="side-foot" style="padding-top:6px"><button class="btn small" style="width:100%" data-act="${DONO ? 'donoSair' : 'donoVer'}" title="${DONO ? 'Abrir o sistema completo da administração' : 'Abrir o painel resumido do gestor'}">${icon(DONO ? 'list' : 'home')}<span class="nav-t">${DONO ? 'Trocar para Administração' : 'Trocar para Gestor'}</span></button></div>
       <div class="side-foot"><span class="dot-ok"></span><span class="nav-t">${S.readonly ? 'Somente leitura' : 'Dados salvos automaticamente'}</span></div>
       ${window.VRPM_WEB ? `<div class="side-foot" style="flex-wrap:wrap;gap:6px"><span class="nav-t mute" style="font-size:.75rem;word-break:break-all">${esc(window.VRPM_WEB.email || '')}</span>${window.VRPM_WEB.dono ? `<button class="btn small" data-act="webUsuarios">Usuários</button>` : ''}<button class="btn small" data-act="webSair">Sair</button></div>` : ''}
     </nav>
     <main>
       ${window.VRPM_WEB ? '' : `<div class="note warn" role="alert" style="margin:0 0 14px;font-size:.95rem"><b>Este sistema mudou para o site.</b> Desde 13/10/2026 os lançamentos são feitos em <a href="https://registroassis.github.io/controle-vrpm/" target="_blank" rel="noopener"><b>registroassis.github.io/controle-vrpm</b></a>. Esta versão ficou só para consulta: o que for lançado aqui <b>não vai</b> para o site.</div>`}
       <div class="topbar">
-        ${['porimovel', 'vendas', 'loc', 'loc_rank', 'loc_im', 'st', 'st_import', 'st_rep', 'st_hist', 'st_comp', 'st_cfg', 'empresa', 'pendencias', 'backup', 'indices', 'origens', 'historico', 'lixeira', 'manual', 'receb', 'conferencia'].includes(S.view) ? `<button class="iconbtn backbtn" data-go="mais" aria-label="Voltar">${icon('back')}</button>` : ''}
+        ${['porimovel', 'vendas', 'loc', 'loc_rank', 'loc_im', 'st', 'st_import', 'st_rep', 'st_hist', 'st_comp', 'st_cfg', 'empresa', 'pendencias', 'backup', 'indices', 'origens', 'historico', 'lixeira', 'manual', 'receb', 'conferencia'].includes(S.view) ? `<button class="iconbtn backbtn" data-go="${DONO ? 'dono' : 'mais'}" aria-label="Voltar">${icon('back')}</button>` : ''}
         <div class="ptitle"><div class="crumb">${esc(grp)}${S.view !== 'inicio' ? ' <span aria-hidden="true">›</span> ' + esc(titles[S.view] || '') : ''}</div><h1>${esc(titles[S.view] || '')}</h1><p>${esc(SUBT[S.view] || '')}</p></div>
         <div class="top-actions">
           <button class="searchbtn" data-act="search" aria-label="Pesquisar">${icon('search')}<span>Pesquisar em tudo…</span><kbd class="kbd">Ctrl K</kbd></button>
-          ${ready() && !S.readonly ? `<button class="btn primary top-new" data-act="novoLanc">${icon('plus')}<span>Novo lançamento</span></button>` : ''}
+          ${ready() && !S.readonly && !DONO ? `<button class="btn primary top-new" data-act="novoLanc">${icon('plus')}<span>Novo lançamento</span></button>` : ''}
         </div>
       </div>
       ${S.readonly ? `<div class="note warn" style="margin-bottom:14px">Você está vendo os dados em modo somente leitura.</div>` : ''}
       ${body}
     </main>
     <nav class="tabbar" aria-label="Navegação">
-      ${TABS.map(k => { const [, t, i] = NAV.find(n => n[0] === k); return `<button data-go="${k}" ${isNavActive(k) ? 'aria-current="page"' : ''}>${icon(i)}<span>${t}</span></button>`; }).join('')}
+      ${DONO ? DONO_TABS.map(([k, t, i]) => `<button data-go="${k}" ${S.view === k ? 'aria-current="page"' : ''}>${icon(i)}<span>${t}</span></button>`).join('') + `<button data-act="donoSair">${icon('list')}<span>Administração</span></button>` : TABS.map(k => { const [, t, i] = NAV.find(n => n[0] === k); return `<button data-go="${k}" ${isNavActive(k) ? 'aria-current="page"' : ''}>${icon(i)}<span>${t}</span></button>`; }).join('')}
     </nav>
-    ${ready() && ['inicio', 'lancamentos'].includes(S.view) && !S.readonly ? `<button class="fab" data-act="novoLanc" aria-label="Novo lançamento">${icon('plus')}</button>` : ''}
+    ${ready() && ['inicio', 'lancamentos'].includes(S.view) && !S.readonly && !DONO ? `<button class="fab" data-act="novoLanc" aria-label="Novo lançamento">${icon('plus')}</button>` : ''}
   </div>
   ${S.sheet ? sheetHTML() : ''}`;
   afterRender();
@@ -5038,6 +5043,133 @@ function inccStatus() {
   return `INCC-DI (FGV) publicado até <b>${mesNome(S.incc.ultimo)}</b> ${emDia ? '<span class="chip pos">em dia</span>' : '<span class="chip warn">pode haver mês novo — clique em Atualizar INCC</span>'}${quando ? ` · última consulta ao Banco Central em <b>${quando}</b>` : ''}${S.incc.erro ? ' <span class="chip neg">a consulta de hoje falhou</span>' : ''}`;
 }
 
+
+/* ====================================================================== VISÃO DO GESTOR (dono do negócio)
+   Tela enxuta para o dono do negócio: patrimônio, compromissos, renda das locações, resultado da VRPM,
+   situação de cada imóvel e alertas que pedem decisão. Só lê os mesmos dados do sistema (nada é gravado aqui,
+   a visão é escolhida depois do login: Gestor ou Administração).
+   Quem está nesta visão também pode editar nas telas que vê (imóveis, locação, vendas). */
+const meuEmail = () => (window.VRPM_WEB?.email || '').toLowerCase();
+/* depois do login no site, pergunta qual visão abrir (Gestor ou Administração); fora do site abre a Administração */
+function donoModoInicial() {
+  if (S.modo) return;
+  if (!window.VRPM_WEB) S.modo = 'adm';
+}
+function donoUltima() { try { return localStorage.getItem('vrpm_modo_' + meuEmail()); } catch { return null; } }
+function donoTrocar(modo) {
+  S.modo = modo; try { localStorage.setItem('vrpm_modo_' + meuEmail(), modo); } catch { }
+  go(modo === 'dono' ? 'dono' : 'inicio');
+}
+function donoEscolhaHTML() {
+  const ult = donoUltima();
+  const card = (m, t, d, ic) => `<button class="panel escolha${ult === m ? ' escolha-ult' : ''}" data-act="${m === 'dono' ? 'donoVer' : 'donoSair'}" style="text-align:left;cursor:pointer;display:grid;gap:8px;padding:22px;border:1px solid var(--line, #dde);width:100%">
+      <span style="display:flex;align-items:center;gap:10px;font-size:1.25rem;font-weight:700">${icon(ic)}${t}</span>
+      <span class="mute" style="font-size:.9rem;line-height:1.45">${d}</span>${ult === m ? '<span class="chip acc" style="justify-self:start">última usada</span>' : ''}</button>`;
+  return `<style>.escolha svg{width:28px;height:28px;flex:none;color:var(--accent)}.escolha:hover{border-color:var(--accent)!important}.escolha-ult{border-color:var(--accent)!important}</style><div style="min-height:100vh;display:grid;place-items:center;padding:16px;background:var(--bg)">
+    <div style="width:100%;max-width:640px;display:grid;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px"><div class="brand-mark" aria-hidden="true">VR</div><div><b style="font-size:1.1rem">Controle VRPM</b><div class="mute" style="font-size:.85rem">${esc(meuEmail())}</div></div></div>
+      <h1 style="margin:4px 0 0;font-size:1.4rem">Como você quer entrar?</h1>
+      <div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+        ${card('dono', 'Gestor', 'Painel resumido: patrimônio, correção pelo CDI e INCC, renda das locações, resultado da VRPM, compromissos das obras e o que pede decisão.', 'chart')}
+        ${card('adm', 'Administração', 'Sistema completo: lançamentos, contas, parcelas, repasses, recebíveis, cadastros, histórico e lixeira.', 'list')}
+      </div>
+      <p class="mute" style="font-size:.82rem;margin:0">Dá para trocar a qualquer momento pelo botão no fim do menu.</p>
+    </div></div>`;
+}
+const DONO_SIDE = [['Gestor', [['dono', 'Painel do gestor', 'home'], ['imoveis', 'Imóveis', 'building'], ['loc_rank', 'Ranking de rendimento', 'index'], ['loc', 'Painel de locação', 'chart'], ['vendas', 'Vendas', 'coin']]]];
+const DONO_TABS = [['dono', 'Painel', 'home'], ['imoveis', 'Imóveis', 'building'], ['loc_rank', 'Ranking', 'index'], ['vendas', 'Vendas', 'coin']];
+
+function donoDados() {
+  const hoje = todayISO(); const ano = Number(hoje.slice(0, 4));
+  const ims = imList().filter(i => !i.arquivado && !i.vendido);
+  // CDI e INCC: mesmos cálculos da aba "Evolução do investimento" e do quadro "Correção anual pelo INCC"
+  const datas = ims.flatMap(i => (i.parcelas || []).filter(p => !p.excluido && p.valor_pago != null && /^\d{4}-\d{2}-\d{2}$/.test(p.data_pagamento || '')).map(p => p.data_pagamento)).sort();
+  const desde = datas[0] || hoje;
+  if (!S.cdi.carregando && (!S.cdi.datas || (S.cdi.desde || '9') > desde) && !S.cdi.tentou?.[desde]) { S.cdi.tentou = { ...(S.cdi.tentou || {}), [desde]: true }; setTimeout(() => cdiCarregar(desde), 0); }
+  if (!S.incc.meses && !S.incc.carregando && !S.incc.tentou) { S.incc.tentou = true; setTimeout(() => inccCarregar(), 0); }
+  const temCdi = !!S.cdi.datas?.length, temIncc = !!S.incc.meses;
+  const linhas = ims.map(im => {
+    const s = imStats(im); const C = invCalc(im); const R = inccCalc(im);
+    const L = locImoveis().some(x => x.id === im.id) ? locResumo(im.id, ano) : null;
+    return { im, s, C, R, renda: L && L.cnt.length ? L.liq : null, pendData: C.pend.length };
+  });
+  const tot = (f) => linhas.reduce((a, l) => a + (f(l) || 0), 0);
+  // renda das locações (mesma base do Ranking de rendimento: sem o condo-hotel)
+  const locs = locImoveis().filter(im => !im.isPool && locModOf(im) !== 'POOL');
+  const porMes = Array.from({ length: 12 }, (_, i) => { let v = null; locs.forEach(im => { const R = locResumo(im.id, ano, i + 1); if (R.cnt.length) v = (v || 0) + R.liq; }); return v; });
+  const mesesCom = porMes.map((v, i) => v != null ? i + 1 : 0).filter(Boolean);
+  const ultMes = mesesCom[mesesCom.length - 1] || null;
+  const rendaAno = porMes.reduce((a, v) => a + (v || 0), 0);
+  // resultado da VRPM (só totais)
+  const Lc = lancList().filter(l => l.ano === ano); const sAno = sums(Lc);
+  const mesesV = [...new Set(Lc.map(l => l.mes))].sort((a, b) => b - a); const umV = mesesV[0]; const sUm = umV ? sums(Lc.filter(l => l.mes === umV)) : null;
+  // compromissos: parcelas em aberto por mês, próximos 12 meses
+  const abertas = ims.flatMap(im => (im.parcelas || []).filter(p => !p.excluido && p.valor_pago == null).map(p => ({ im, p })));
+  const venc = abertas.filter(x => parcStatus(x.p) === 'VENCIDA');
+  const lim = mesAdd(hoje.slice(0, 7), 11);
+  const comp = {}; abertas.filter(x => x.p.vencimento && x.p.vencimento.slice(0, 7) >= hoje.slice(0, 7) && x.p.vencimento.slice(0, 7) <= lim).forEach(x => { const k = x.p.vencimento.slice(0, 7); (comp[k] = comp[k] || { v: 0, n: 0, ims: new Set() }); comp[k].v += x.p.valor_parcela || 0; comp[k].n++; comp[k].ims.add(shortName(x.im)); });
+  const semData = abertas.filter(x => !x.p.vencimento);
+  // alertas que pedem decisão
+  const A = [];
+  if (venc.length) A.push(['neg', `<b>${venc.length} parcela(s) de imóvel vencida(s)</b> sem pagamento · ${brl(venc.reduce((a, x) => a + (x.p.valor_parcela || 0), 0))}`, 'go:imoveis']);
+  ims.filter(obraAtrasada).forEach(im => A.push(['warn', `<b>${esc(shortName(im))}</b>: previsão de entrega (${fdate(im.previsao_entrega)}) já passou — situação: ${esc((im.situacao_obra || '').toLowerCase())}`, `imovel:${im.id}`]));
+  const parados = ims.filter(im => im.situacao_obra === 'ENTREGUE' && !LOC_USOS.includes(im.situacao_uso) && !locIsST(im.id) && !locPools().some(p => p.imoveis.includes(im.id)));
+  if (parados.length) A.push(['warn', `<b>${parados.length} imóve${parados.length > 1 ? 'is entregues' : 'l entregue'} ainda sem gerar renda:</b> ${parados.map(im => `${esc(shortName(im))}${im.situacao_uso ? ' (' + esc(usoLabel(im.situacao_uso).toLowerCase()) + ')' : ''}`).join('; ')}`, parados.length === 1 ? `imovel:${parados[0].id}` : 'go:imoveis']);
+  const stPend = stMeses().filter(m => S.stcfg[m.imovel_id]).map(m => stA(m)).filter(a => a.statusRep === 'PENDENTE' || a.statusRep === 'PARCIAL');
+  if (stPend.length) A.push(['warn', `<b>${stPend.length} repasse(s) do anfitrião</b> ainda não recebido(s) · ${brl(stPend.reduce((a, x) => a + Math.max(0, x.saldo), 0))}`, 'go:loc']);
+  vendasList().forEach(v => { const F = vndFin(v); if (!F || F.quitado) return; const nm = esc(S.imoveis[v.imovel_id] ? baseName(S.imoveis[v.imovel_id]) : ''); A.push([F.atrasadas.length ? 'neg' : 'info', `<b>Venda ${nm}</b>: saldo a receber do comprador ${brl(F.saldo)}${F.atrasadas.length ? ' · parcela atrasada' : F.proxData ? ' · próxima parcela ' + fdate(F.proxData) : ''}`, 'go:vendas']); });
+  return { hoje, ano, ims, linhas, temCdi, temIncc, tot, porMes, ultMes, rendaAno, nLocs: locs.length, sAno, umV, sUm, comp, semData, venc, A };
+}
+
+VIEWS.dono = () => {
+  const D = donoDados(); const { ano } = D;
+  const pago = D.tot(l => l.s.pago), saldo = D.tot(l => l.s.saldo);
+  const cdi = D.temCdi ? D.tot(l => l.C.corr) : null; const cdiBase = D.tot(l => l.C.orig);
+  const incc = D.temIncc ? D.tot(l => l.R.corrigido) : null; const inccBase = D.tot(l => l.R.corrigido != null ? l.R.pagoData : 0);
+  const pmin = D.temCdi ? D.tot(l => l.C.pmin) : null;
+  const pct = (a, b) => b ? ' · ' + ((a / b - 1) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%' : '';
+  const semDataPag = D.linhas.filter(l => l.pendData);
+  const comp = Object.entries(D.comp).sort(); const compMax = Math.max(1, ...comp.map(([, c]) => c.v));
+  const uso = (im) => im.situacao_obra !== 'ENTREGUE' ? `<span class="chip ${obraAtrasada(im) ? 'neg' : 'warn'}">${esc((im.situacao_obra || '').toLowerCase())}</span>${im.previsao_entrega ? `<div class="mute" style="font-size:.75rem">entrega ${fdate(im.previsao_entrega)}</div>` : ''}`
+    : im.situacao_uso ? `<span class="chip ${usoCls(im.situacao_uso)}">${esc(usoLabel(im.situacao_uso))}</span>` : '<span class="chip">entregue</span>';
+  const ordem = D.linhas.slice().sort((a, b) => (b.C.corr || b.s.pago) - (a.C.corr || a.s.pago));
+  return `<div class="grid">
+    <div class="kpis">
+      <div class="kpi has-ic"><span class="kpi-ic">${icon('building')}</span><div class="eyebrow">Patrimônio investido</div><div class="v">${brl(pago)}</div><div class="s">${D.ims.length} imóveis · valor efetivamente pago</div></div>
+      <div class="kpi has-ic"><span class="kpi-ic">${icon('chart')}</span><div class="eyebrow">Corrigido pelo CDI</div><div class="v pos">${cdi != null ? brl(cdi) : '—'}</div><div class="s">${cdi != null ? 'rendimento ' + brl(cdi - cdiBase) + pct(cdi, cdiBase) : S.cdi.carregando ? 'carregando o CDI…' : 'CDI não carregado'}</div></div>
+      <div class="kpi has-ic"><span class="kpi-ic">${icon('index')}</span><div class="eyebrow">Corrigido pelo INCC</div><div class="v">${incc != null ? brl(incc) : '—'}</div><div class="s">${incc != null ? 'correção ' + brl(incc - inccBase) + pct(incc, inccBase) : S.incc.carregando ? 'carregando o INCC…' : 'INCC não carregado'}</div></div>
+      <div class="kpi has-ic"><span class="kpi-ic">${icon('coin')}</span><div class="eyebrow">Ainda a pagar das obras</div><div class="v ${saldo ? 'warnc' : 'pos'}">${brl(saldo)}</div><div class="s">${D.linhas.filter(l => l.s.status === 'EM PAGAMENTO').length} em pagamento · ${D.linhas.filter(l => l.s.status === 'QUITADO').length} quitados</div></div>
+    </div>
+    <div class="kpis">
+      <button type="button" class="kpi has-ic" data-go="loc_rank"><span class="kpi-ic">${icon('home')}</span><div class="eyebrow">Renda líquida das locações · ${ano}</div><div class="v pos">${brl(D.rendaAno)}</div><div class="s">${D.nLocs} imóveis locados${D.ultMes ? ' · até ' + MES3[D.ultMes - 1].toLowerCase() : ''}</div><div class="s kpi-more">Ver ranking ›</div></button>
+      <button type="button" class="kpi has-ic" data-go="loc_rank"><span class="kpi-ic">${icon('calendar')}</span><div class="eyebrow">${D.ultMes ? 'Renda líquida de ' + competencia(ano, D.ultMes) : 'Renda do último mês'}</div><div class="v">${D.ultMes ? brl(D.porMes[D.ultMes - 1]) : '—'}</div><div class="s">último mês com dados das locações</div><div class="s kpi-more">Ver por imóvel ›</div></button>
+      <div class="kpi has-ic"><span class="kpi-ic">${icon('briefcase')}</span><div class="eyebrow">Resultado da VRPM · ${ano}</div><div class="v ${D.sAno.res < 0 ? 'neg' : 'pos'}">${brl(D.sAno.res)}</div><div class="s">receitas ${brlS(D.sAno.RECEITA)} − despesas ${brlS(D.sAno.DESPESA)}</div></div>
+      <div class="kpi has-ic"><span class="kpi-ic">${icon('shield')}</span><div class="eyebrow">Preço mínimo de venda da carteira</div><div class="v">${pmin != null ? brl(pmin) : '—'}</div><div class="s">soma dos preços mínimos (CDI + 6% + 3%)</div></div>
+    </div>
+    <section class="panel"><div class="panel-h"><h2>O que pede atenção</h2></div>
+      <div class="list">${D.A.length ? D.A.map(([k, t, act]) => `<button class="row" data-act="${act}"><div class="main"><div class="t" style="font-weight:400"><span class="chip ${k === 'info' ? 'acc' : k}" style="margin-right:6px">${k === 'neg' ? 'urgente' : k === 'warn' ? 'atenção' : 'info'}</span>${t}</div></div><div>›</div></button>`).join('') : '<p class="mute" style="margin:0">Nada pedindo decisão agora.</p>'}</div>
+    </section>
+    <section class="panel"><div class="panel-h"><h2>Meus imóveis</h2><span class="mute" style="font-size:.8rem">clique num imóvel para ver a ficha completa</span></div>
+      <div class="tablewrap"><table><thead><tr><th style="text-align:left">Imóvel</th><th style="text-align:left">Situação</th><th>Pago</th><th>A pagar</th><th>Corrigido CDI</th><th>Corrigido INCC</th><th>Preço mínimo</th><th>Renda líquida ${ano}</th></tr></thead><tbody>
+      ${ordem.map(l => `<tr data-act="imovel:${l.im.id}" style="cursor:pointer"><td style="text-align:left"><b>${esc(shortName(l.im))}</b>${l.im.configuracao ? `<div class="mute" style="font-size:.75rem">${esc(l.im.configuracao)}</div>` : ''}</td><td style="text-align:left">${uso(l.im)}</td><td>${brl(l.s.pago)}</td><td class="${l.s.saldo ? 'warnc' : 'mute'}">${l.s.saldo ? brl(l.s.saldo) : 'quitado'}</td><td>${D.temCdi && l.C.ok.length ? brl(l.C.corr) : '—'}</td><td>${D.temIncc && l.R.corrigido != null ? brl(l.R.corrigido) : '—'}</td><td><b>${D.temCdi && l.C.pmin ? brl(l.C.pmin) : '—'}</b></td><td class="${l.renda < 0 ? 'neg' : ''}">${l.renda != null ? brl(l.renda) : '<span class="mute">—</span>'}</td></tr>`).join('')}
+      <tr class="total"><td style="text-align:left">Total</td><td></td><td>${brl(pago)}</td><td>${brl(saldo)}</td><td>${cdi != null ? brl(cdi) : '—'}</td><td>${incc != null ? brl(incc) : '—'}</td><td>${pmin != null ? brl(pmin) : '—'}</td><td>${brl(D.linhas.reduce((a, l) => a + (l.renda || 0), 0))}</td></tr>
+      </tbody></table></div>
+      ${semDataPag.length ? `<p class="mute" style="font-size:.8rem;margin:8px 0 0">Pagamento sem data em ${semDataPag.map(l => esc(shortName(l.im))).join(', ')}: fica fora das correções até a data ser informada.</p>` : ''}
+      <p class="mute" style="font-size:.8rem;margin:6px 0 0">${S.cdi.ultima ? `CDI oficial até ${fdate(S.cdi.ultima)}` : ''}${S.incc.ultimo ? ` · ${inccStatus()}` : ''}. Renda líquida = o que a locação rendeu depois das despesas do imóvel; o condo-hotel não entra (igual ao Ranking).</p>
+    </section>
+    <section class="panel"><div class="panel-h"><h2>Compromissos das obras · próximos 12 meses</h2><span class="mute" style="font-size:.8rem">parcelas em aberto por mês de vencimento</span></div>
+      ${comp.length ? `<div class="tablewrap"><table><thead><tr><th style="text-align:left">Mês</th><th style="text-align:left">Imóveis</th><th>Parcelas</th><th>Valor</th><th style="width:30%"></th></tr></thead><tbody>
+        ${comp.map(([k, c]) => `<tr><td style="text-align:left">${mesNome(k)}</td><td style="text-align:left;white-space:normal">${esc([...c.ims].join(', '))}</td><td>${c.n}</td><td><b>${brl(c.v)}</b></td><td><div style="height:8px;border-radius:4px;background:var(--accent);opacity:.7;width:${Math.max(3, c.v / compMax * 100)}%"></div></td></tr>`).join('')}
+        <tr class="total"><td style="text-align:left">Total 12 meses</td><td></td><td>${comp.reduce((a, [, c]) => a + c.n, 0)}</td><td>${brl(comp.reduce((a, [, c]) => a + c.v, 0))}</td><td></td></tr></tbody></table></div>` : '<p class="mute" style="margin:0">Nenhuma parcela de obra vencendo nos próximos 12 meses.</p>'}
+      ${D.semData.length ? `<p class="mute" style="font-size:.8rem;margin:8px 0 0">${D.semData.length} parcela(s) em aberto sem data de vencimento (${brl(D.semData.reduce((a, x) => a + (x.p.valor_parcela || 0), 0))}), como as de entrega das chaves: entram no "Ainda a pagar", mas não neste calendário.</p>` : ''}
+    </section>
+  </div>`;
+};
+async function donoAct(cmd) {
+  if (cmd === 'donoVer') return donoTrocar('dono');
+  if (cmd === 'donoSair') return donoTrocar('adm');
+}
+
 /* ====================================================================== sheets / toasts / confirm */
 function openSheet(kind, ...args) { S.sheet = { kind, args }; S.sheetForm = null; render(); }
 function closeSheet() { S.sheet = null; S.sheetForm = null; S.dirty = false; render(); }
@@ -5196,7 +5328,7 @@ async function onAppClick(e) {
     case 'exportBanco': return exportBanco();
     case 'webSair': return window.VRPM_WEB?.sair();
     case 'webUsuarios': return window.VRPM_WEB?.usuarios();
-    default: if (cmd.startsWith('inv') || cmd.startsWith('incc')) return invAct(cmd, p); if (cmd.startsWith('st')) return stAct(cmd, p); if (cmd.startsWith('loc')) return locAct(cmd, p); if (cmd.startsWith('vnd')) return vndAct(cmd, p); if (cmd.startsWith('pi')) return piAct(cmd, p); return;
+    default: if (cmd.startsWith('dono')) return donoAct(cmd); if (cmd.startsWith('inv') || cmd.startsWith('incc')) return invAct(cmd, p); if (cmd.startsWith('st')) return stAct(cmd, p); if (cmd.startsWith('loc')) return locAct(cmd, p); if (cmd.startsWith('vnd')) return vndAct(cmd, p); if (cmd.startsWith('pi')) return piAct(cmd, p); return;
     case 'exportJson': return exportJson();
     case 'applyImport': return applyImport();
     case 'backupAgora': try { toast('Fazendo cópia…', 0); await makeBackup('Cópia manual'); toast('Cópia criada'); loadBackupList(); } catch (er) { toast(dbErr(er)); } return;
