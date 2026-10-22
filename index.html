@@ -4778,6 +4778,14 @@ function cdiFator(dataISO, pct) {
   for (let i = 0; i < D.length; i++) { const d = D[i]; if (d < dataISO) continue; f *= 1 + (pct / 100) * (S.cdi.dias[d] / 100); n++; }
   return { f, n };
 }
+/* evolução mês a mês: o CDI de cada mês (produto das taxas diárias do mês) incide sobre o valor já corrigido no mês anterior */
+function cdiMeses(dataISO, pct, valor) {
+  const D = S.cdi.datas || []; const M = [];
+  for (const d of D) { if (d < dataISO) continue; const m = d.slice(0, 7); let r = M[M.length - 1]; if (!r || r.mes !== m) { r = { mes: m, f: 1, n: 0, ini: d }; M.push(r); } r.f *= 1 + (pct / 100) * (S.cdi.dias[d] / 100); r.n++; r.fim = d; }
+  let base = Number(valor) || 0;
+  return M.map(r => { const rend = base * (r.f - 1); const o = { ...r, cdi: r.f - 1, base, rend, final: base + rend }; base += rend; return o; });
+}
+S.invAbre = S.invAbre || {};
 function invSim(im) { return { ...INV_DEF, ...(im.venda_sim || {}), ...(S.invSim[im.id] || {}) }; }
 function invCalc(im) {
   const sim = invSim(im);
@@ -4801,6 +4809,17 @@ function invCalc(im) {
   const custos = (Number(sim.corretagem) + Number(sim.cessao)) / 100;
   const pmin = custos < 1 ? corr / (1 - custos) : null;
   return { sim, linhas, ok, pend, abertas, orig, corr, rend: corr - orig, custos, pmin, origPend: pend.reduce((s, l) => s + Number(l.p.valor_pago), 0) };
+}
+function invEvoHtml(l, sim) {
+  const M = cdiMeses(l.p.data_pagamento, sim.pct_cdi, l.p.valor_pago);
+  const nomeMes = (m) => { const [a, mm] = m.split('-'); return ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][Number(mm) - 1] + '/' + a; };
+  const pc = (v) => (v * 100).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + '%';
+  return `<tr class="inv-evo"><td colspan="6" style="padding:6px 8px 14px 24px;background:var(--bg2, rgba(127,127,127,.06))">
+    <div class="mute" style="font-size:.78rem;margin-bottom:6px;text-align:left;white-space:normal">Evolução composta de ${brl(l.p.valor_pago)} pago em ${fdate(l.p.data_pagamento)}: o CDI de cada mês incide sobre o valor já corrigido no mês anterior.</div>
+    <table style="font-size:.82rem"><thead><tr><th style="text-align:left">Mês</th><th>Dias úteis</th><th>CDI do mês${sim.pct_cdi != 100 ? ` (${sim.pct_cdi}%)` : ''}</th><th>Base do mês</th><th>Rendimento do mês</th><th>Valor ao fim do mês</th></tr></thead><tbody>
+    ${M.map(r => `<tr><td style="text-align:left">${nomeMes(r.mes)}${r.ini.slice(8) !== '01' && r === M[0] ? ` <span class="mute">(desde ${fdate(r.ini)})</span>` : ''}${r === M[M.length - 1] ? ` <span class="mute">(até ${fdate(r.fim)})</span>` : ''}</td><td>${r.n}</td><td>${pc(r.cdi)}</td><td>${brl(r.base)}</td><td>${brl(r.rend)}</td><td><b>${brl(r.final)}</b></td></tr>`).join('')}
+    <tr class="total"><td style="text-align:left">Acumulado</td><td>${l.n}</td><td>${pc(l.f - 1)}</td><td>${brl(l.p.valor_pago)}</td><td>${brl(l.rend)}</td><td>${brl(l.corr)}</td></tr>
+    </tbody></table></td></tr>`;
 }
 function invTab(im) {
   const id = im.id;
@@ -4827,10 +4846,10 @@ function invTab(im) {
   </div>
   ${C.pend.length ? `<div class="note warn" style="font-size:.85rem"><b>Informação pendente:</b> ${C.pend.map(l => `${esc(l.desc)} (${brl(l.p.valor_pago)}) — ${esc(l.pend)}`).join('; ')}. Esses valores <b>não</b> entram no total corrigido até a data ser informada na parcela.</div>` : ''}
   ${C.abertas.length ? `<p class="mute" style="font-size:.82rem;margin:0">${C.abertas.length} parcela(s) ainda em aberto não entram no cálculo: só o que já foi pago rende CDI.</p>` : ''}
-  <section class="panel"><div class="panel-h"><h2>Pagamentos corrigidos pelo CDI</h2><span class="mute" style="font-size:.8rem">cada pagamento corrigido desde a própria data</span></div>
+  <section class="panel"><div class="panel-h"><h2>Pagamentos corrigidos pelo CDI</h2><span class="mute" style="font-size:.8rem">cada pagamento corrigido desde a própria data, com juros compostos · clique numa linha para ver mês a mês</span></div>
     <div class="tablewrap"><table><thead><tr><th>Data do pagamento</th><th style="text-align:left">Parcela</th><th>Valor pago</th><th>CDI acumulado</th><th>Rendimento</th><th>Valor corrigido</th></tr></thead><tbody>
-    ${C.linhas.map(l => `<tr><td>${l.p.data_pagamento ? fdate(l.p.data_pagamento) : '<span class="warnc">a informar</span>'}</td><td style="text-align:left">${esc(l.desc)}</td><td>${brl(l.p.valor_pago)}</td>
-      ${l.pend ? `<td colspan="3" class="warnc" style="text-align:left">${esc(l.pend)}</td>` : l.semCdi ? '<td colspan="3" class="mute">aguardando o CDI</td>' : `<td title="${l.n} dia(s) útil(eis) · fator ${l.f.toFixed(8)}">${pctS2(l.pct)}</td><td>${brl(l.rend)}</td><td><b>${brl(l.corr)}</b></td>`}</tr>`).join('') || '<tr><td colspan="6" class="mute">Nenhum pagamento registrado nas parcelas deste imóvel.</td></tr>'}
+    ${C.linhas.map(l => { const k = l.p.id || l.p.data_pagamento; const pode = l.f != null; const aberto = pode && S.invAbre[id + '|' + k]; return `<tr${pode ? ` class="inv-row" data-act="invEvo:${id}:${esc(k)}" style="cursor:pointer" title="Ver a evolução mês a mês"` : ''}><td>${pode ? `<span class="mute" style="font-size:.75rem">${aberto ? '▾' : '▸'}</span> ` : ''}${l.p.data_pagamento ? fdate(l.p.data_pagamento) : '<span class="warnc">a informar</span>'}</td><td style="text-align:left">${esc(l.desc)}</td><td>${brl(l.p.valor_pago)}</td>
+      ${l.pend ? `<td colspan="3" class="warnc" style="text-align:left">${esc(l.pend)}</td>` : l.semCdi ? '<td colspan="3" class="mute">aguardando o CDI</td>' : `<td title="${l.n} dia(s) útil(eis) · fator ${l.f.toFixed(8)}">${pctS2(l.pct)}</td><td>${brl(l.rend)}</td><td><b>${brl(l.corr)}</b></td>`}</tr>${aberto ? invEvoHtml(l, sim) : ''}`; }).join('') || '<tr><td colspan="6" class="mute">Nenhum pagamento registrado nas parcelas deste imóvel.</td></tr>'}
     ${C.ok.length ? `<tr class="total"><td>Total</td><td></td><td>${brl(C.orig)}</td><td>${C.orig ? pctS2(C.rend / C.orig) : '—'}</td><td>${brl(C.rend)}</td><td>${brl(C.corr)}</td></tr>` : ''}
     </tbody></table></div></section>
   <section class="panel"><div class="panel-h"><h2>Premissas</h2><span class="mute" style="font-size:.8rem">altere para simular outras condições</span></div>
@@ -4871,13 +4890,14 @@ function invTab(im) {
     <div class="mute" style="font-size:.85rem;line-height:1.55;margin-top:8px">
     <p><b>Pagamentos:</b> parcelas deste imóvel com valor pago, exatamente como estão cadastradas (data e valor efetivamente pagos). Nada é copiado nem alterado; parcelas em aberto não entram. Lançamentos de "Investimento" da VRPM não são somados de novo, porque repetem as mesmas parcelas.</p>
     <p><b>CDI:</b> série oficial nº 12 do Sistema Gerenciador de Séries do Banco Central (Taxa de juros – CDI, % ao dia, dias úteis). As taxas ficam guardadas no banco do sistema e são completadas automaticamente quando o Banco Central publica dias novos; taxas já guardadas nunca são substituídas. Se a consulta falhar, o sistema usa só as taxas já guardadas e mostra a última data disponível — não há estimativa.</p>
-    <p><b>Correção:</b> cada pagamento é corrigido separadamente: fator = ∏ (1 + p × CDIdia ÷ 100), multiplicando a taxa de cada dia útil desde a data do pagamento (inclusive) até a última taxa publicada (inclusive); p = percentual do CDI escolhido (100% = 1). Valor corrigido = valor pago × fator. Rendimento = valor corrigido − valor pago.</p>
+    <p><b>Correção (juros compostos):</b> cada pagamento é corrigido separadamente, desde a própria data. O rendimento de cada dia útil incide sobre o valor já corrigido até a véspera: fator = ∏ (1 + p × CDIdia ÷ 100), da data do pagamento (inclusive) até a última taxa publicada (inclusive); p = percentual do CDI escolhido (100% = 1). Isso é o mesmo que aplicar o CDI de cada mês sobre o valor corrigido no mês anterior — clique num pagamento para ver essa evolução mês a mês. Nunca se soma correção simples sobre o valor original. Valor corrigido = valor pago × fator; o total corrigido é a soma dos valores corrigidos de todos os pagamentos.</p>
     <p><b>Preço mínimo:</b> preço = total corrigido ÷ (1 − corretagem − cessão). Com 6% + 3%, preço = total corrigido ÷ 0,91. Assim, depois de pagar os custos da venda, sobra exatamente o capital corrigido.</p>
     <p>Não considera imposto sobre ganho de capital, despesas de manutenção, aluguéis recebidos nem custos de cartório e ITBI que não estejam nas parcelas.</p></div></details>`;
 }
 async function invAct(cmd, p) {
   const id = p[0]; const im = S.imoveis[id];
   switch (cmd) {
+    case 'invEvo': { const k = id + '|' + p[1]; S.invAbre[k] = !S.invAbre[k]; return render(); }
     case 'invCdi': S.cdi.tentou = {}; return cdiCarregar(S.cdi.desde || todayISO(), true);
     case 'invSalvar': { const sim = invSim(im); try { await mutateDoc(`imoveis/${id}`, d => { d.venda_sim = { pct_cdi: Number(sim.pct_cdi), corretagem: Number(sim.corretagem), cessao: Number(sim.cessao), preco_anuncio: sim.preco_anuncio || null, salvo_em: new Date().toISOString() }; }); delete S.invSim[id]; await logHist('EDIÇÃO', id, `Preço mínimo de venda: premissas salvas (${sim.pct_cdi}% do CDI, corretagem ${sim.corretagem}%, cessão ${sim.cessao}%)`); toast('Premissas salvas'); } catch (e) { toast(dbErr(e)); } return; }
     case 'invPadrao': try { await mutateDoc(`imoveis/${id}`, d => { d.venda_sim = { ...INV_DEF, preco_anuncio: d.venda_sim?.preco_anuncio || null, salvo_em: new Date().toISOString() }; }); delete S.invSim[id]; toast('Premissas padrão'); } catch (e) { toast(dbErr(e)); } return;
