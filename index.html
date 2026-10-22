@@ -4980,7 +4980,7 @@ function inccPanel(im) {
   if (!S.incc.meses && !S.incc.carregando && !S.incc.tentou) { S.incc.tentou = true; setTimeout(() => inccCarregar(), 0); }
   const R = inccCalc(im); const id = im.id;
   const pc = (f) => ((f - 1) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + '%';
-  const info = S.incc.carregando ? '<span class="chip warn">carregando o INCC oficial…</span>' : S.incc.ultimo ? `INCC-DI (FGV) publicado até <b>${mesNome(S.incc.ultimo)}</b>` : '<span class="chip neg">INCC ainda não carregado</span>';
+  const info = S.incc.carregando ? '<span class="chip warn">carregando o INCC oficial…</span>' : S.incc.ultimo ? inccStatus() : '<span class="chip neg">INCC ainda não carregado</span>';
   if (!R.pago) return '';
   return `<section class="panel"><div class="panel-h"><h2>Correção anual pelo INCC</h2>${S.incc.carregando ? '' : `<button class="btn small" data-act="inccAtual:${id}">${icon('restore')}Atualizar INCC</button>`}</div>
     <div class="kpis" style="margin-bottom:10px">
@@ -5014,7 +5014,7 @@ function invCompara(im, C) {
   if (C.orig && R.pagoData && Math.abs(C.orig - R.pagoData) > 0.005) aviso.push('as bases diferem porque algum pagamento está sem data');
   if (temIncc && R.nDepois) aviso.push(`${R.nDepois} pagamento(s) feitos depois da última correção anual entram no INCC pelo valor pago`);
   if (temIncc && R.aguardando) aviso.push(`a correção INCC de ${fdate(R.aguardando.aniv)} aguarda índice publicado`);
-  return `<section class="panel"><div class="panel-h"><h2>Comparação: CDI × INCC</h2><span class="mute" style="font-size:.8rem">mesmos pagamentos, dois índices</span></div>
+  return `<section class="panel"><div class="panel-h"><h2>Comparação: CDI × INCC</h2>${S.incc.carregando ? '' : `<button class="btn small" data-act="inccAtual:${im.id}">${icon('restore')}Atualizar INCC</button>`}</div><p class="mute" style="font-size:.8rem;margin:-4px 0 8px">mesmos pagamentos, dois índices</p>
     <div class="tablewrap"><table><thead><tr><th style="text-align:left"></th><th>${sim.pct_cdi}% do CDI<div class="mute" style="font-weight:400;font-size:.72rem;text-transform:none">diário, desde cada pagamento</div></th><th>INCC-DI (FGV)<div class="mute" style="font-weight:400;font-size:.72rem;text-transform:none">1× por ano, data-base ${R.dataBase ? fdate(R.dataBase) : '—'}</div></th><th>Diferença (CDI − INCC)</th></tr></thead><tbody>
       <tr><td style="text-align:left">Valor efetivamente pago</td><td>${brl(C.orig)}</td><td>${brl(R.pagoData)}</td><td>${brl(C.orig - R.pagoData)}</td></tr>
       <tr><td style="text-align:left">Valor corrigido</td><td><b>${cdiV != null ? brl(cdiV) : '—'}</b></td><td><b>${inV != null ? brl(inV) : '—'}</b></td><td class="${dif < 0 ? 'neg' : ''}">${dif != null ? brl(dif) : '—'}</td></tr>
@@ -5022,10 +5022,20 @@ function invCompara(im, C) {
       <tr class="total"><td style="text-align:left">Preço mínimo de venda (÷ ${div.toLocaleString('pt-BR', { maximumFractionDigits: 4 })})</td><td>${cdiV != null && div > 0 ? brl(cdiV / div) : '—'}</td><td>${inV != null && div > 0 ? brl(inV / div) : '—'}</td><td class="${dif < 0 ? 'neg' : ''}">${dif != null && div > 0 ? brl(dif / div) : '—'}</td></tr>
     </tbody></table></div>
     ${ganha ? `<p style="margin:8px 0 0;font-size:.88rem">${ganha}</p>` : ''}
-    ${S.incc.carregando ? '<p class="mute" style="font-size:.82rem;margin:6px 0 0">carregando o INCC oficial…</p>' : ''}
+    <p class="mute" style="font-size:.82rem;margin:6px 0 0">${S.incc.carregando ? 'carregando o INCC oficial…' : S.incc.ultimo ? inccStatus() : '<span class="chip neg">INCC ainda não carregado</span>'}${S.cdi.ultima ? ` · CDI oficial até <b>${fdate(S.cdi.ultima)}</b>` : ''}</p>
     ${aviso.length ? `<p class="mute" style="font-size:.8rem;margin:6px 0 0">Observação: ${aviso.join('; ')}.</p>` : ''}
     <p class="mute" style="font-size:.8rem;margin:6px 0 0">O preço mínimo dos quadros acima e do simulador continua pelo CDI. A coluna INCC mostra quanto seria o preço mínimo se o capital fosse corrigido pelo INCC, com os mesmos ${sim.corretagem}% de corretagem e ${sim.cessao}% de cessão.</p>
   </section>`;
+}
+
+/* situação da atualização do INCC: último mês publicado + quando o sistema consultou o Banco Central */
+function inccStatus() {
+  const c = S.incc.consultado; const hoje = todayISO();
+  const quando = c ? `${fdate(c)} às ${new Date(c).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : null;
+  // o INCC-DI de um mês sai no início do mês seguinte: o esperado hoje é o do mês anterior (ou o de dois meses atrás nos primeiros dias)
+  const esperado = mesAdd(hoje.slice(0, 7), Number(hoje.slice(8)) >= 15 ? -1 : -2);
+  const emDia = S.incc.ultimo >= esperado;
+  return `INCC-DI (FGV) publicado até <b>${mesNome(S.incc.ultimo)}</b> ${emDia ? '<span class="chip pos">em dia</span>' : '<span class="chip warn">pode haver mês novo — clique em Atualizar INCC</span>'}${quando ? ` · última consulta ao Banco Central em <b>${quando}</b>` : ''}${S.incc.erro ? ' <span class="chip neg">a consulta de hoje falhou</span>' : ''}`;
 }
 
 /* ====================================================================== sheets / toasts / confirm */
