@@ -16,7 +16,7 @@
   const css = `
   #vw-login{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;background:radial-gradient(1200px 600px at 50% -10%,#1A2747 0%,#0D1424 55%,#080C16 100%);font-family:Inter,system-ui,sans-serif}
   #vw-login .box{width:100%;max-width:400px;background:#fff;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:30px 28px;box-shadow:0 30px 80px rgba(0,0,0,.45);color:#0B1324}
-  #vw-login .box::before{content:'VR';display:grid;place-items:center;width:40px;height:40px;border-radius:11px;margin-bottom:18px;background:linear-gradient(145deg,#1C2A4A,#0B1222);color:#F3E6C8;font:700 14px Inter,system-ui,sans-serif;box-shadow:inset 0 0 0 1px rgba(194,154,75,.5)}
+  #vw-login .box::before{content:'VRPM';display:grid;place-items:center;width:52px;height:40px;border-radius:11px;font-size:12px!important;letter-spacing:.04em;margin-bottom:18px;background:linear-gradient(145deg,#1C2A4A,#0B1222);color:#F3E6C8;font:700 14px Inter,system-ui,sans-serif;box-shadow:inset 0 0 0 1px rgba(194,154,75,.5)}
   #vw-login h1{font-family:Inter,system-ui,sans-serif;font-weight:650;font-size:1.45rem;letter-spacing:-.025em;margin:0 0 4px;color:#0B1324}
   #vw-login p{margin:0 0 18px;color:#667085;font-size:.9rem}
   #vw-login label{display:block;font-size:.8rem;font-weight:600;margin:14px 0 6px;color:#344054}
@@ -833,6 +833,12 @@ th{background:#F7F9FC;color:#5A6B8F}
   .kpi .v{margin-top:10px}
 }
 @media (max-width:640px){.kpis{grid-template-columns:1fr 1fr}.kpi{padding:14px;border-radius:16px}.kpi .s{font-size:.76rem}.pt-ic{display:none}.panel{padding:16px;border-radius:16px}.kpi.has-ic .kpi-ic{display:grid}}
+
+/* v5: marca "VRPM" por extenso no selo e no avatar */
+.brand-mark{font-size:10.5px!important;letter-spacing:.04em;width:46px!important}
+.app.collapsed .brand-mark{width:44px!important}
+.avatar{font-size:.66rem!important;letter-spacing:.03em}
+.hero-art{width:min(46%,520px)}
 </style>
 
 <style>body{margin:0;background:var(--bg)}</style></head><body><div id="app"></div>
@@ -2107,7 +2113,7 @@ function render() {
   app.innerHTML = `
   <div class="app${S.collapsed ? ' collapsed' : ''}">
     <nav class="side" aria-label="Menu">
-      <div class="brand"><div class="brand-mark" aria-hidden="true">VR</div><div class="brand-txt"><b>Controle VRPM</b><small>${esc(empresa().nome_fantasia || 'Administração de Imóveis')}</small></div>
+      <div class="brand"><div class="brand-mark" aria-hidden="true">VRPM</div><div class="brand-txt"><b>Controle VRPM</b><small>${esc(empresa().nome_fantasia || 'Administração de Imóveis')}</small></div>
         <button class="side-toggle" data-act="sideToggle" aria-label="${S.collapsed ? 'Expandir menu' : 'Recolher menu'}" title="${S.collapsed ? 'Expandir menu' : 'Recolher menu'}">${icon('back')}</button></div>
       <div class="side-scroll">
       ${SIDEV.map(([g, items]) => `<div class="side-group"><div class="side-label">${g}</div>${items.map(([k, t, i]) => `<button class="nav-btn" data-go="${k}" title="${esc(t)}" ${S.view === k || (S.view === 'loc_im' && k === 'loc') ? 'aria-current="page"' : ''}>${icon(i)}<span class="nav-t">${t}</span>${k === 'pendencias' && openPend ? `<span class="badge">${openPend}</span>` : ''}</button>`).join('')}</div>`).join('')}
@@ -2125,7 +2131,7 @@ function render() {
         <div class="top-actions">
           <button class="searchbtn" data-act="search" aria-label="Pesquisar">${icon('search')}<span>Pesquisar em tudo…</span><kbd class="kbd">Ctrl K</kbd></button>
           ${ready() ? (() => { const n = alertasCount(); return `<button class="iconbtn bellbtn" data-act="sino" aria-label="${n ? n + ' alerta(s)' : 'Sem alertas'}" title="${n ? n + ' ponto(s) pedindo atenção' : 'Nada pedindo atenção'}">${icon('bell')}${n ? '<i class="bell-dot"></i>' : ''}</button>`; })() : ''}
-          ${window.VRPM_WEB ? `<div class="avatar" title="${esc(window.VRPM_WEB.email || '')}">${esc((window.VRPM_WEB.email || 'VR').replace(/[^a-z]/gi, '').slice(0, 2).toUpperCase())}</div>` : ''}
+          ${window.VRPM_WEB ? `<div class="avatar" title="${esc(window.VRPM_WEB.email || '')}">VRPM</div>` : ''}
           ${ready() && !S.readonly && !DONO ? `<button class="btn primary top-new" data-act="novoLanc">${icon('plus')}<span>Novo lançamento</span></button>` : ''}
         </div>
       </div>
@@ -2171,7 +2177,7 @@ function heroArt() {
     <path d="M214 200 V40 L292 16 V200 Z" fill="url(#hg2)"/><path d="M292 16 L352 34 V200 H292 Z" fill="url(#hg3)"/>${rows}${cols}
     <path d="M214 40 L292 16 L352 34" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="1.4"/>
     <rect width="560" height="190" fill="url(#hg4)"/>
-    </svg><span class="hero-tag">Mais que imóveis,<br>rendimento.</span></div>`;
+    </svg></div>`;
 }
 /* ====================================================================== INÍCIO */
 const VIEWS = {};
@@ -2376,6 +2382,7 @@ function imovelSheet(id) {
         <div class="kpi"><div class="eyebrow">Saldo em aberto</div><div class="v ${s.saldo ? 'warnc' : 'pos'}">${brl(s.saldo)}</div><div class="s">${s.prox ? 'Próx. ' + fdate(s.prox) : 'Nenhuma parcela em aberto'}</div></div>
       </div>
       ${inccPanel(im)}
+      ${hisPanel(im)}
       ${!S.readonly && abertas.length ? `<div class="btns">${abertas.slice(0, 2).map(p => `<button class="btn primary" data-act="pagar:${id}:${p.id}">${icon('coin')}Pagar ${esc((p.mes_ref || '').toLowerCase())} ${p.ano || ''} · ${brl(p.valor_parcela)}</button>`).join('')}</div>` : ''}
       <section class="panel"><div class="panel-h"><h2>Locação</h2>${S.readonly ? '' : `<button class="btn small" data-act="editImovel:${id}">${icon('edit')}Editar</button>`}</div>
         <dl class="info">
@@ -4334,6 +4341,24 @@ function locItens(id, ano, mes = 0) {
   }));
   return out.sort((a, b) => a.mes - b.mes || a.tipo.localeCompare(b.tipo) || a.fonte.localeCompare(b.fonte));
 }
+/* locação mensal por imobiliária (Messen, Quinto Andar): a comissão de intermediação é 100% do 1º aluguel, então a renda
+   só começa no 2º mês. Do início do contrato até o mês anterior ao 1º recebimento é "carência": esses meses não contam
+   como meses de operação nem entram nas médias, e não geram aviso de "sem receita". Os valores continuam nos totais. */
+const locComissao1 = (id) => { const c = locCfg(id); const im = S.imoveis[id]; return c.comissao_1o_aluguel ?? /messen|quinto/i.test(im?.adm_locacao || ''); };
+function locCarencia(id) {
+  const im = S.imoveis[id]; if (!im || locModOf(im) !== 'MENSAL') return null; const com = locComissao1(id);
+  const ini = locCfg(id).inicio_contrato || im.inicio_contrato; if (!/^\d{4}-\d{2}/.test(ini || '')) return null;
+  const iniK = Number(ini.slice(0, 4)) * 12 + Number(ini.slice(5, 7));
+  if (!com) return { iniK, fimK: iniK - 1, primK: null, previstoK: null, com };
+  let prim = null; const agora = locNowKey();
+  for (let a = Math.floor((iniK - 1) / 12); a <= Math.floor((agora - 1) / 12) && prim == null; a++) {
+    const ks = locItens(id, a, 0).filter(x => x.conta && x.tipo === 'RECEITA' && x.valor > 0).map(x => x.ano * 12 + x.mes).filter(k => k >= iniK).sort((x, y) => x - y);
+    if (ks.length) prim = ks[0];
+  }
+  const fim = prim != null ? prim - 1 : iniK + 1; // sem recebimento ainda: carência = mês do início + mês do 1º aluguel
+  return { iniK, fimK: Math.max(iniK, fim), primK: prim, previstoK: prim ?? iniK + 2, com };
+}
+const locKeyTxt = (k) => competencia(Math.floor((k - 1) / 12), ((k - 1) % 12) + 1);
 function locResumo(id, ano, mes = 0) {
   const it = locItens(id, ano, mes); const cnt = it.filter(x => x.conta);
   const rec = cnt.filter(x => x.tipo === 'RECEITA').reduce((s, x) => s + x.valor, 0);
@@ -4341,12 +4366,15 @@ function locResumo(id, ano, mes = 0) {
   const prev = it.filter(x => x.status === 'PREVISTO' && !x.ignorado);
   const prevRec = prev.filter(x => x.tipo === 'RECEITA').reduce((s, x) => s + x.valor, 0);
   const prevDesp = prev.filter(x => x.tipo === 'DESPESA').reduce((s, x) => s + x.valor, 0);
-  const meses = [...new Set(cnt.map(x => x.mes))].sort((a, b) => a - b);
+  const car = locCarencia(id); const emCar = (m) => !!car && (Number(ano) * 12 + m) <= car.fimK; // antes do contrato ou na carência da comissão
+  const meses = [...new Set(cnt.map(x => x.mes))].filter(m => !emCar(m)).sort((a, b) => a - b);
+  const mesesCar = [...new Set(cnt.map(x => x.mes))].filter(emCar).sort((a, b) => a - b);
   const liq = rec - desp; const ref = locValorRef(id);
-  const rent = ref.v && cnt.length ? liq / ref.v : null;
+  const liqOp = cnt.filter(x => !emCar(x.mes)).reduce((s, x) => s + (x.tipo === 'RECEITA' ? x.valor : -x.valor), 0);
+  const rent = ref.v && meses.length ? liqOp / ref.v : null;
   const porMes = Array.from({ length: 12 }, (_, i) => { const xs = cnt.filter(x => x.mes === i + 1); return xs.length ? xs.reduce((s, x) => s + (x.tipo === 'RECEITA' ? x.valor : -x.valor), 0) : null; });
   const recMes = Array.from({ length: 12 }, (_, i) => cnt.filter(x => x.mes === i + 1 && x.tipo === 'RECEITA').reduce((s, x) => s + x.valor, 0));
-  return { it, cnt, rec, desp, liq, prevRec, prevDesp, meses, ref, rent, rentMedia: rent != null && meses.length ? rent / meses.length : null, margem: rec ? liq / rec : null, porMes, recMes };
+  return { car, mesesCar, liqOp, it, cnt, rec, desp, liq, prevRec, prevDesp, meses, ref, rent, rentMedia: rent != null && meses.length ? rent / meses.length : null, margem: rec ? liq / rec : null, porMes, recMes };
 }
 function locAlertas(im, ano) {
   const id = im.id; const A = []; const c = locCfg(id);
@@ -4360,7 +4388,10 @@ function locAlertas(im, ano) {
     const ini = c.inicio_contrato || im.inicio_contrato;
     const iniK = ini ? Number(ini.slice(0, 4)) * 12 + Number(ini.slice(5, 7)) : null;
     const primRec = R.recMes.findIndex(v => v > 0) + 1; // 0 = nenhuma receita no ano
-    const start = iniK != null ? Math.max(1, iniK - Number(ano) * 12) : primRec || null;
+    const car = locCarencia(id);
+    let start = iniK != null ? Math.max(1, iniK - Number(ano) * 12) : primRec || null;
+    if (car && start) start = Math.max(start, car.fimK + 1 - Number(ano) * 12);
+    if (car && car.com && !car.primK) A.push({ t: `1º aluguel fica com a imobiliária (comissão): 1º recebimento previsto em ${locKeyTxt(car.previstoK)}`, act: `locIm:${id}`, cls: 'acc' });
     if (start) { const sem = []; for (let m = start; m <= lim; m++) if (!R.recMes[m - 1]) sem.push(MES3[m - 1]); if (sem.length) A.push({ t: `Sem receita em ${sem.join(', ')}`, act: `locIm:${id}`, cls: 'warn' }); }
   }
   const vencidos = locItens(id, ano).filter(x => x.fonte === 'PAINEL' && x.status === 'PREVISTO' && x.ano * 12 + x.mes < locNowKey());
@@ -4569,7 +4600,8 @@ function locCfgForm(id) {
         <span class="hint">${sug ? `Sugestão pelo nome: "${esc(sug)}". ` : ''}Os valores desse item passam a contar como receita (valores zerados são ignorados).</span></div>
       <label class="check"><input type="checkbox" id="lg_receb" ${c.usar_receb !== false ? 'checked' : ''}><span>Somar os Recebíveis manuais vinculados</span></label>`}
       <label class="check"><input type="checkbox" id="lg_lanc" ${c.usar_lanc !== false ? 'checked' : ''}><span>Somar os Lançamentos das origens vinculadas a este imóvel${og.usadas.length ? ': <b>' + esc(og.usadas.join(', ')) + '</b>' : ' (nenhuma origem vinculada — vincule em Mais › Origens)'}<br><span class="mute" style="font-size:.82rem">Investimentos não entram no rendimento.${og.compartilhadas.length ? ' Origens ligadas a mais de um imóvel ficam de fora: ' + esc(og.compartilhadas.join(', ')) + '.' : ''}</span></span></label>
-      ${locModOf(im) === 'MENSAL' ? `<div class="f"><label for="lg_ini">Início da locação (para avisar meses sem receita)</label><input type="date" id="lg_ini" value="${c.inicio_contrato || im.inicio_contrato || ''}"></div>` : ''}
+      ${locModOf(im) === 'MENSAL' ? `<div class="f"><label for="lg_ini">Início da locação (para avisar meses sem receita)</label><input type="date" id="lg_ini" value="${c.inicio_contrato || im.inicio_contrato || ''}"></div>
+      <label class="check"><input type="checkbox" id="lg_com1" ${locComissao1(id) ? 'checked' : ''}><span>O 1º aluguel fica com a imobiliária (comissão de intermediação de 100%)<br><span class="mute" style="font-size:.8rem">A renda começa no 2º mês: os meses do início do contrato até o 1º recebimento não contam como zero nas médias nem geram aviso.</span></span></label>` : ''}
     </form>`, foot: `<button class="btn" data-act="closeSheet">Cancelar</button><button class="btn primary" data-act="locCfgSave">${icon('check')}Salvar</button>` };
 }
 async function locCfgSave(ctx) {
@@ -4580,6 +4612,7 @@ async function locCfgSave(ctx) {
   const data = { valor_ref: ref, valor_ref_fonte: $('#lg_reff').value.trim() || null, usar_lanc: $('#lg_lanc').checked, deposito: dep ? { conta: dep, descricao: $('#lg_depd').value.trim() || null } : null };
   if (item !== undefined) { data.item_recebiveis = item; data.item_recebiveis_confirmado = !!item; data.usar_receb = $('#lg_receb').checked; }
   if ($('#lg_ini')) data.inicio_contrato = $('#lg_ini').value || null;
+  if ($('#lg_com1')) data.comissao_1o_aluguel = $('#lg_com1').checked;
   try {
     await mutateDoc(`loc_cfg/${ctx.id}`, d => Object.assign(d, data), { create: { id: ctx.id, imovel_id: ctx.id, ignorar: [], criado_em: new Date().toISOString() } });
     await logHist('EDIÇÃO', ctx.id, `Painel de locação ${shortName(locEnt(ctx.id))}: vínculos atualizados (depósito: ${dep ? (data.deposito.descricao || LOC_DEP[dep]) : 'não informado'}; referência ${ref ? brl(ref) : 'padrão'}${item ? ', recebíveis "' + item + '"' : ''})`);
@@ -4642,7 +4675,7 @@ function locRanking(ano, mes) {
     const Ra = locResumo(im.id, ano, 0);
     const meses = Array.from({ length: 12 }, (_, i) => { const R = locResumo(im.id, ano, i + 1); return R.cnt.length ? { liq: R.liq, rec: R.rec, desp: R.desp } : null; });
     const P = mes ? meses[mes - 1] : (Ra.cnt.length ? { liq: Ra.liq, rec: Ra.rec, desp: Ra.desp } : null);
-    return { im, mod: locModOf(im), meses, P, nMeses: Ra.meses.length, media: Ra.meses.length ? Ra.liq / Ra.meses.length : null };
+    return { im, mod: locModOf(im), meses, P, nMeses: Ra.meses.length, media: Ra.meses.length ? Ra.liqOp / Ra.meses.length : null };
   });
   rows.sort((a, b) => (a.P == null) - (b.P == null) || (b.P?.liq ?? 0) - (a.P?.liq ?? 0) || shortName(a.im).localeCompare(shortName(b.im), 'pt-BR'));
   let pos = 0; rows.forEach(r => { r.pos = r.P != null ? ++pos : null; });
@@ -5264,6 +5297,7 @@ function invTab(im) {
   </section>
   <section class="panel"><div class="panel-h"><h2>Simulador de preço de anúncio</h2></div>
     <div class="f" style="max-width:280px"><label for="inv_preco">Preço de venda desejado (R$)</label><input class="money" type="text" inputmode="decimal" id="inv_preco" value="${preco ? moneyInput(preco) : ''}" placeholder="ex.: 480.000,00"></div>
+    ${(() => { const fx = HIS_FAIXAS[im.categoria] ? im.categoria : null; const HV = fx ? hisVenda(fx) : null; if (!HV?.v) return ''; const alvo = V ? V.b : P; return alvo && alvo > HV.v + 0.005 ? `<div class="note neg" style="margin-top:10px"><b>Acima do limite legal ${fx}.</b> ${V ? 'O preço digitado' : 'O preço mínimo'} (${brl(alvo)}) passa do valor máximo de venda ${fx} de ${HV.ano} (${brl(HV.v)}) em ${brl(alvo - HV.v)}.</div>` : `<p class="mute" style="font-size:.82rem;margin:8px 0 0">Limite legal de venda ${fx} em ${HV.ano}: ${brl(HV.v)}.</p>`; })()}
     ${V ? `${P && V.b < P - 0.005 ? `<div class="note warn" style="margin-top:10px"><b>Abaixo do preço mínimo.</b> Faltam <b>${brl(P - V.b)}</b> no preço de venda (preço mínimo ${brl(P)}) para empatar com ${sim.pct_cdi}% do CDI.</div>` : P ? `<div class="note" style="margin-top:10px"><b>Acima do preço mínimo</b> em ${brl(V.b - P)}.</div>` : ''}
     <div class="tablewrap" style="margin-top:10px"><table><tbody>
       <tr><td>Valor bruto da venda</td><td>${brl(V.b)}</td></tr>
@@ -5425,6 +5459,106 @@ function inccStatus() {
   return `INCC-DI (FGV) publicado até <b>${mesNome(S.incc.ultimo)}</b> ${emDia ? '<span class="chip pos">em dia</span>' : '<span class="chip warn">pode haver mês novo — clique em Atualizar INCC</span>'}${quando ? ` · última consulta ao Banco Central em <b>${quando}</b>` : ''}${S.incc.erro ? ' <span class="chip neg">a consulta de hoje falhou</span>' : ''}`;
 }
 
+/* ====================================================================== LIMITES HIS (Prefeitura de São Paulo)
+   Venda: Decreto nº 63.130/2024, art. 6º-A (redação do Decreto nº 64.895/2026) — corrigido anualmente pelo INCC-M.
+     O decreto de 2026 aplicou o INCC-M acumulado de mai/2025 a dez/2025 sobre R$ 369.600,00 → R$ 383.636,74 (conferido).
+     Ano sem decreto cadastrado: o sistema aplica a mesma regra (INCC-M oficial, série SGS 7456, de jan a dez do ano anterior)
+     e mostra como "calculado pelo INCC-M"; quando o decreto sair, o valor oficial pode ser registrado e passa a valer.
+   Locação: art. 7º-A — aluguel até 30% da renda-limite da faixa (art. 46 da Lei 16.050/2014).
+     Renda-limite = salários mínimos da faixa (HIS-1: 3, HIS-2: 6, HMP: 10) × salário mínimo vigente (série SGS 1619).
+   Nada é estimado: se faltar o índice de algum mês ou o salário mínimo, o valor fica "aguardando". */
+const HIS_FAIXAS = { 'HIS-1': { sm: 3 }, 'HIS-2': { sm: 6 }, 'HMP': { sm: 10 } };
+const HIS_OFICIAL = [ // valores oficiais de venda publicados (ano de vigência)
+  { ano: 2025, 'HIS-1': 266000, 'HIS-2': 369600, 'HMP': 518000, fonte: 'Decreto nº 63.130/2024, art. 6º-A (valores vigentes até jan/2026)', ref_ate: '2025-04' },
+  { ano: 2026, 'HIS-1': 276102.20, 'HIS-2': 383636.74, 'HMP': 537672.71, fonte: 'Decreto nº 64.895, de 5/1/2026 (DOC 6/1/2026) — INCC-M de mai/2025 a dez/2025', ref_ate: '2025-12' },
+];
+S.his = S.his || { incc: null, sm: null, carregando: false, erro: null };
+async function hisCarregar(forcar = false) {
+  if (S.his.carregando) return; S.his.carregando = true; S.his.erro = null;
+  let doc = null; try { const s = await S.db.doc('indices/his_sp').get(); doc = s.exists ? s.data() : null; } catch { }
+  const hoje = todayISO();
+  if (forcar || !doc || (doc.consultado_em || '').slice(0, 10) !== hoje) {
+    const pega = async (serie, ini) => { let ult = null; for (let t = 0; t < 5; t++) { try { const r = await fetch(`https://api.bcb.gov.br/dados/serie/bcdata.sgs.${serie}/dados?formato=json&dataInicial=${ini}&dataFinal=${isoBR(hoje)}&_=${Date.now()}`, { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); const j = await r.json(); if (!Array.isArray(j)) throw new Error('resposta inválida'); return j; } catch (e) { ult = e; await new Promise(res => setTimeout(res, 1200 * (t + 1))); } } throw ult || new Error('sem resposta'); };
+    try {
+      const [a, b] = await Promise.all([pega(7456, '01/01/2024'), pega(1619, '01/01/2023')]);
+      const mm = (arr) => { const o = {}; arr.forEach(x => { const v = parseFloat(String(x.valor).replace(',', '.')); if (x.data && isFinite(v)) { const [, m, y] = x.data.split('/'); o[`${y}-${m}`] = v; } }); return o; };
+      doc = { incc_m: { ...(doc?.incc_m || {}), ...mm(a) }, salario_minimo: { ...(doc?.salario_minimo || {}), ...mm(b) }, fonte: 'Banco Central do Brasil — SGS 7456 (INCC-M, FGV) e SGS 1619 (salário mínimo)', consultado_em: new Date().toISOString() };
+      if (!S.readonly) { try { await S.db.doc('indices/his_sp').set(doc); } catch (e) { console.warn('his cache', e); } }
+    } catch (e) { S.his.erro = e.message || String(e); }
+  }
+  S.his = { incc: doc?.incc_m || null, sm: doc?.salario_minimo || null, consultado: doc?.consultado_em || null, carregando: false, erro: S.his.erro, tentou: true };
+  if (S.sheet?.kind === 'imovel') render(); else scheduleRender();
+}
+const hisOficiais = () => { const extra = (S.config.his_limites?.itens || []).filter(x => x && x.ano && !x.excluido); const m = new Map(HIS_OFICIAL.map(x => [x.ano, x])); extra.forEach(x => m.set(Number(x.ano), { ...m.get(Number(x.ano)), ...x, ano: Number(x.ano), registrado: true })); return [...m.values()].sort((a, b) => a.ano - b.ano); };
+/* limite de venda vigente no ano: oficial, ou o último oficial corrigido pelo INCC-M (mesma regra do decreto) */
+function hisVenda(faixa, ano = Number(todayISO().slice(0, 4))) {
+  const of = hisOficiais(); const exato = of.find(x => x.ano === ano && x[faixa] != null);
+  if (exato) return { v: exato[faixa], ano, oficial: true, fonte: exato.fonte, registrado: exato.registrado };
+  const base = of.filter(x => x.ano < ano && x[faixa] != null).pop(); if (!base) return null;
+  let v = base[faixa], ref = base.ref_ate || `${base.ano - 1}-12`; const passos = [];
+  for (let y = base.ano + 1; y <= ano; y++) {
+    const fim = `${y - 1}-12`; const meses = []; for (let k = mesAdd(ref, 1); k <= fim; k = mesAdd(k, 1)) meses.push(k);
+    if (!S.his.incc) return { v: null, ano, aguardando: 'INCC-M ainda não carregado', base };
+    const falta = meses.filter(k => S.his.incc[k] == null); if (falta.length) return { v: null, ano, aguardando: `INCC-M de ${falta.map(mesNome).join(', ')} ainda não publicado`, base };
+    const f = meses.reduce((p, k) => p * (1 + S.his.incc[k] / 100), 1); v = Math.round(v * f * 100) / 100; passos.push({ ano: y, de: meses[0], ate: fim, f }); ref = fim;
+  }
+  return { v, ano, oficial: false, base, passos, fonte: `${base.fonte}, corrigido pelo INCC-M oficial (${passos.map(p => `${mesNome(p.de)} a ${mesNome(p.ate)}: ${((p.f - 1) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}%`).join('; ')})` };
+}
+function hisLocacao(faixa) {
+  if (!S.his.sm) return null; const ks = Object.keys(S.his.sm).sort(); const k = ks[ks.length - 1]; if (!k) return null;
+  const sm = S.his.sm[k]; const renda = sm * HIS_FAIXAS[faixa].sm; return { sm, ref: k, renda, aluguel: Math.round(renda * 0.30 * 100) / 100 };
+}
+function hisPanel(im) {
+  const faixa = HIS_FAIXAS[im.categoria] ? im.categoria : null; if (!faixa) return '';
+  if (!S.his.carregando && !S.his.tentou) { S.his.tentou = true; setTimeout(() => hisCarregar(), 0); }
+  const ano = Number(todayISO().slice(0, 4));
+  const V = hisVenda(faixa, ano); const L = hisLocacao(faixa);
+  const C = invCalc(im); const pmin = S.cdi.datas?.length ? C.pmin : null;
+  const aluguel = im.situacao_uso === 'LOCAÇÃO MENSAL' ? im.valor_locacao : null;
+  const avisos = [];
+  if (V?.v && pmin && pmin > V.v + 0.005) avisos.push(['warn', `O preço mínimo de venda calculado (${brl(pmin)}) passa do limite legal de venda ${faixa} (${brl(V.v)}) em ${brl(pmin - V.v)}.`]);
+  if (L && aluguel && aluguel > L.aluguel + 0.005) avisos.push(['neg', `O aluguel cadastrado (${brl(aluguel)}) passa do limite de locação ${faixa} (${brl(L.aluguel)}).`]);
+  if (L && aluguel && aluguel <= L.aluguel + 0.005) avisos.push(['ok', `Aluguel cadastrado (${brl(aluguel)}) dentro do limite: folga de ${brl(L.aluguel - aluguel)}.`]);
+  const hist = hisOficiais().filter(x => x[faixa] != null);
+  return `<section class="panel"><div class="panel-h"><span class="ph-ic">${icon('shield')}</span><h2>Limites ${faixa} · Prefeitura de São Paulo</h2>${S.his.carregando ? '<span class="chip warn">atualizando…</span>' : `<button class="btn small" data-act="hisAtual:${im.id}">${icon('restore')}Atualizar</button>`}</div>
+    <div class="kpis">
+      <div class="kpi"><div class="eyebrow">Valor limite para venda · ${ano}</div><div class="v">${V?.v ? brl(V.v) : '—'}</div><div class="s">${V?.v ? (V.oficial ? (V.registrado ? 'valor oficial registrado' : 'valor oficial do decreto') : 'calculado pelo INCC-M (regra do decreto) — confira quando sair o decreto do ano') : V?.aguardando ? 'aguardando: ' + esc(V.aguardando) : 'sem valor-base'}</div></div>
+      <div class="kpi"><div class="eyebrow">Valor limite para locação (mês)</div><div class="v">${L ? brl(L.aluguel) : '—'}</div><div class="s">${L ? `30% da renda-limite ${faixa} (${brl(L.renda)} = ${HIS_FAIXAS[faixa].sm} × salário mínimo de ${brl(L.sm)})` : S.his.carregando ? 'carregando o salário mínimo…' : 'salário mínimo ainda não carregado'}</div></div>
+    </div>
+    ${avisos.map(([k, t]) => `<div class="note ${k === 'ok' ? '' : k}" style="font-size:.86rem;margin-top:10px">${t}</div>`).join('')}
+    <details style="margin-top:10px"><summary class="mute" style="cursor:pointer;font-size:.82rem">Base legal, histórico e como se atualiza</summary>
+      <div class="mute" style="font-size:.82rem;line-height:1.55">
+      <p><b>Venda:</b> Decreto nº 63.130/2024, art. 6º-A — vender acima do limite descumpre os arts. 46 e 47 da Lei nº 16.050/2014. O valor é corrigido uma vez por ano pelo INCC-M; a Prefeitura publica o novo valor por decreto em janeiro. ${V?.fonte ? 'Valor deste ano: ' + esc(V.fonte) + '.' : ''}</p>
+      <p><b>Locação:</b> art. 7º-A do mesmo decreto — o aluguel não pode passar de 30% da renda-limite da faixa. A renda-limite ${faixa} é ${HIS_FAIXAS[faixa].sm} salários mínimos e muda quando muda o salário mínimo${L ? ` (vigente: ${brl(L.sm)}, ${mesNome(L.ref)})` : ''}.</p>
+      <p><b>Atualização automática:</b> o sistema consulta o Banco Central (INCC-M e salário mínimo) uma vez por dia. Em janeiro, com o INCC-M de dezembro publicado, o limite de venda do novo ano é calculado pela mesma regra do decreto; quando o decreto sair, registre o valor oficial em "Registrar valor oficial do decreto" e ele passa a valer.${S.his.consultado ? ` Última consulta: ${fdate(S.his.consultado)} às ${new Date(S.his.consultado).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.` : ''}</p>
+      <div class="tablewrap"><table><thead><tr><th>Ano</th><th>Limite de venda ${faixa}</th><th style="text-align:left">Fonte</th></tr></thead><tbody>${hist.map(h => `<tr><td>${h.ano}</td><td>${brl(h[faixa])}</td><td style="text-align:left;white-space:normal">${esc(h.fonte || '')}</td></tr>`).join('')}${V && !V.oficial && V.v ? `<tr><td>${ano}</td><td>${brl(V.v)}</td><td style="text-align:left">calculado pelo INCC-M</td></tr>` : ''}</tbody></table></div>
+      ${S.readonly ? '' : `<div class="btns" style="margin-top:8px"><button class="btn small" data-act="hisOficial:${im.id}">${icon('edit')}Registrar valor oficial do decreto</button></div>`}
+      </div></details>
+  </section>`;
+}
+function hisOficialForm(id) {
+  const ano = Number(todayISO().slice(0, 4));
+  return { title: 'Valor oficial dos limites de venda', form: 'hisof', ctx: { id }, body: `<form class="form" id="frm" novalidate>
+    <p class="mute" style="margin:0;font-size:.86rem">Use quando a Prefeitura publicar o decreto do ano. Os valores registrados substituem o cálculo automático daquele ano.</p>
+    <div class="f2"><div class="f req"><label for="ho_ano">Ano de vigência</label><input type="number" id="ho_ano" value="${ano}"></div><div class="f"></div></div>
+    <div class="f2"><div class="f"><label for="ho_h1">HIS-1 (R$)</label><input type="text" inputmode="decimal" id="ho_h1" value="${''}"></div><div class="f req"><label for="ho_h2">HIS-2 (R$)</label><input type="text" inputmode="decimal" id="ho_h2" value="${''}"></div></div>
+    <div class="f2"><div class="f"><label for="ho_hmp">HMP (R$)</label><input type="text" inputmode="decimal" id="ho_hmp" value="${''}"></div><div class="f req"><label for="ho_fonte">Decreto (número e data)</label><input type="text" id="ho_fonte" value="" placeholder="ex.: Decreto nº 65.xxx, de 5/1/2027"></div></div>
+  </form>`, foot: `<button class="btn" data-act="closeSheet">Cancelar</button><button class="btn primary" data-act="hisOficialSalvar">${icon('check')}Salvar</button>` };
+}
+async function hisAct(cmd, p) {
+  if (cmd === 'hisAtual') { S.his.tentou = true; return hisCarregar(true); }
+  if (cmd === 'hisOficial') return openSheet('hisOficial', p[0]);
+  if (cmd === 'hisOficialSalvar') {
+    const v = (k) => ($('#' + k)?.value || '').trim(); const ano = Number(v('ho_ano')); const errs = [];
+    if (!(ano >= 2024 && ano <= 2100)) errs.push(['ho_ano', 'Ano inválido.']);
+    const val = {}; for (const [k, f] of [['ho_h1', 'HIS-1'], ['ho_h2', 'HIS-2'], ['ho_hmp', 'HMP']]) { const m = v(k) ? parseMoney(v(k)) : null; if (Number.isNaN(m) || (m != null && m <= 0)) errs.push([k, 'Valor inválido.']); else val[f] = m; }
+    if (val['HIS-2'] == null) errs.push(['ho_h2', 'Informe o valor HIS-2.']); if (!v('ho_fonte')) errs.push(['ho_fonte', 'Informe o decreto.']);
+    if (showErrs(errs)) return;
+    const it = { ano, ...Object.fromEntries(Object.entries(val).filter(([, x]) => x != null)), fonte: v('ho_fonte'), ref_ate: `${ano - 1}-12`, registrado_em: new Date().toISOString() };
+    try { await mutateDoc('config/his_limites', d => { d.itens = d.itens || []; d.itens.push(it); }, { create: { itens: [] } }); await logHist('INCLUSÃO', 'his_limites', `Limites HIS ${ano} registrados: HIS-2 ${brl(it['HIS-2'])} (${it.fonte})`); toast('Valor oficial registrado'); openSheet('imovel', S.sheetCtx.id); } catch (e) { toast(dbErr(e)); }
+  }
+}
+
 
 /* ====================================================================== VISÃO DO GESTOR (dono do negócio)
    Tela enxuta para o dono do negócio: patrimônio, compromissos, renda das locações, resultado da VRPM,
@@ -5449,7 +5583,7 @@ function donoEscolhaHTML() {
       <span class="mute" style="font-size:.9rem;line-height:1.45">${d}</span>${ult === m ? '<span class="chip acc" style="justify-self:start">última usada</span>' : ''}</button>`;
   return `<style>.escolha svg{width:28px;height:28px;flex:none;color:var(--accent)}.escolha:hover{border-color:var(--accent)!important}.escolha-ult{border-color:var(--accent)!important}</style><div style="min-height:100vh;display:grid;place-items:center;padding:16px;background:var(--bg)">
     <div style="width:100%;max-width:640px;display:grid;gap:16px">
-      <div style="display:flex;align-items:center;gap:12px"><div class="brand-mark" aria-hidden="true">VR</div><div><b style="font-size:1.1rem">Controle VRPM</b><div class="mute" style="font-size:.85rem">${esc(meuEmail())}</div></div></div>
+      <div style="display:flex;align-items:center;gap:12px"><div class="brand-mark" aria-hidden="true">VRPM</div><div><b style="font-size:1.1rem">Controle VRPM</b><div class="mute" style="font-size:.85rem">${esc(meuEmail())}</div></div></div>
       <h1 style="margin:4px 0 0;font-size:1.4rem">Como você quer entrar?</h1>
       <div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
         ${card('dono', 'Gestor', 'Painel resumido: patrimônio, correção pelo CDI e INCC, renda das locações, resultado da VRPM, compromissos das obras e o que pede decisão.', 'chart')}
@@ -5579,42 +5713,52 @@ function donoDetSheet(k) {
 }
 
 /* ---------- performance das locações: ocupação, RevPAR, médias e mês a mês */
-function donoPerf(ano) {
+function donoPerf(ano, mes = 0) {
   const locs = locImoveis().filter(im => !im.isPool && locModOf(im) !== 'POOL');
   const rows = locs.map(im => {
-    const R = locResumo(im.id, ano, 0); const mod = locModOf(im);
+    const R = locResumo(im.id, ano, mes); const Ra = mes ? locResumo(im.id, ano, 0) : R; const mod = locModOf(im);
     let ocup = null, revpar = null, diaria = null;
     if (locIsST(im.id)) {
-      const xs = stSel({ ano, mes: 0, im: im.id }).filter(x => x.incluir);
+      const xs = stSel({ ano, mes, im: im.id }).filter(x => x.incluir);
       const oc = xs.map(x => x.a.ocup).filter(v => v != null); ocup = oc.length ? oc.reduce((a, b) => a + b, 0) / oc.length : null;
       const dias = xs.reduce((a, x) => a + (x.a.dias || 0), 0), bruto = xs.reduce((a, x) => a + x.a.tot.bruto, 0), resv = xs.reduce((a, x) => a + (x.a.resv || 0), 0);
       revpar = dias ? bruto / dias : null; diaria = resv ? bruto / resv : null;
     }
     const n = R.meses.length;
-    return { im, mod, R, n, ocup, revpar, diaria, mediaRs: n ? R.liq / n : null, mediaPct: R.rentMedia, ref: R.ref };
-  }).sort((a, b) => (b.n > 0) - (a.n > 0) || b.R.liq - a.R.liq);
+    return { im, mod, R, Ra, n, ocup, revpar, diaria, liq: R.liq, mediaRs: n ? R.liqOp / n : null, mediaPct: mes ? R.rent : R.rentMedia, ref: R.ref, car: R.car };
+  }).sort((a, b) => (b.n > 0) - (a.n > 0) || b.liq - a.liq || shortName(a.im).localeCompare(shortName(b.im), 'pt-BR'));
   return rows;
 }
 function donoPerfHTML() {
-  const anos = locAnos(); const ano = Number(S.f.gAno) || new Date().getFullYear();
-  const rows = donoPerf(ano);
-  const mesesCom = Array.from({ length: 12 }, (_, i) => rows.some(r => r.R.porMes[i] != null));
-  const ult = mesesCom.lastIndexOf(true) + 1; const cols = Array.from({ length: Math.max(ult, 1) }, (_, i) => i);
+  const anos = locAnos(); const ano = Number(S.f.gAno) || new Date().getFullYear(); const mes = Number(S.f.gMes) || 0;
+  const rows = donoPerf(ano, mes);
+  const porMes = (r, i) => r.Ra.porMes[i];
+  const emCar = (r, i) => r.car && (ano * 12 + i + 1) <= r.car.fimK && ((ano * 12 + i + 1) >= r.car.iniK || porMes(r, i) != null);
+  const antes = (r, i) => (ano * 12 + i + 1) < r.car.iniK;
+  const mesesCom = Array.from({ length: 12 }, (_, i) => rows.some(r => porMes(r, i) != null || emCar(r, i)));
+  const ult = mesesCom.lastIndexOf(true) + 1;
+  const cols = mes ? [mes - 1] : Array.from({ length: Math.max(ult, 1) }, (_, i) => i);
   const pc = (v, d = 1) => v == null ? '<span class="mute">—</span>' : pctS(v, d);
-  const totMes = cols.map(i => { const vs = rows.map(r => r.R.porMes[i]).filter(v => v != null); return vs.length ? vs.reduce((a, b) => a + b, 0) : null; });
-  const totLiq = rows.reduce((a, r) => a + (r.n ? r.R.liq : 0), 0);
+  const na = (r) => `<span class="mute">${r.mod === 'CURTA' ? '—' : 'n/a'}</span>`;
+  const cel = (r, i) => { const v = porMes(r, i); if (emCar(r, i)) return `<td title="${antes(r, i) ? 'Antes do início do contrato: não conta nas médias' : 'Comissão da imobiliária: o 1º aluguel fica com ela (não conta nas médias)'}"><span class="chip" style="font-size:.66rem">${antes(r, i) ? 'antes do contrato' : 'comissão'}</span>${v != null && v !== 0 ? `<div class="mute" style="font-size:.72rem">${brl(v)}</div>` : ''}</td>`; return `<td class="${v < 0 ? 'neg' : ''}">${v == null ? '<span class="mute">—</span>' : brl(v)}</td>`; };
+  const totMes = cols.map(i => { const vs = rows.map(r => porMes(r, i)).filter(v => v != null); return vs.length ? vs.reduce((a, b) => a + b, 0) : null; });
+  const totLiq = rows.reduce((a, r) => a + r.liq, 0);
+  const per = mes ? competencia(ano, mes) : String(ano);
   return `<section class="panel"><div class="panel-h"><h2>Performance das locações</h2>
+      <select id="gMes" aria-label="Mês" style="width:auto"><option value="0">Ano inteiro</option>${MESES.map((m, i) => `<option value="${i + 1}" ${i + 1 === mes ? 'selected' : ''}>${m.charAt(0) + m.slice(1).toLowerCase()}</option>`).join('')}</select>
       <select id="gAno" aria-label="Ano" style="width:auto">${anos.map(a => `<option ${a === ano ? 'selected' : ''}>${a}</option>`).join('')}</select></div>
-    <div class="tablewrap"><table style="font-size:.86rem"><thead><tr><th>#</th><th style="text-align:left">Imóvel</th><th>Ocupação</th><th>RevPAR</th><th>Diária média</th><th>Média R$/mês</th><th>Média %/mês</th><th>Meses</th>${cols.map(i => `<th>${MES3[i]}</th>`).join('')}<th>Total ${ano}</th></tr></thead><tbody>
-    ${rows.map((r, k) => `<tr data-act="locIm:${r.im.id}" style="cursor:pointer"><td>${r.n ? `<span class="rkb${k < 3 ? ' r' + (k + 1) : ''}">${k + 1}º</span>` : '—'}</td><td style="text-align:left;white-space:nowrap"><b>${esc(shortName(r.im))}</b><div class="mute" style="font-size:.72rem">${locModLabel(r.mod)}</div></td>
-      <td>${r.mod === 'CURTA' ? pc(r.ocup) : '<span class="mute" title="Locação mensal: não se aplica">n/a</span>'}</td><td>${r.revpar != null ? brl(r.revpar) : '<span class="mute">' + (r.mod === 'CURTA' ? '—' : 'n/a') + '</span>'}</td><td>${r.diaria != null ? brl(r.diaria) : '<span class="mute">' + (r.mod === 'CURTA' ? '—' : 'n/a') + '</span>'}</td>
-      <td><b>${r.mediaRs != null ? brl(r.mediaRs) : '—'}</b></td><td>${pc(r.mediaPct, 2)}</td><td>${r.n}</td>
-      ${cols.map(i => { const v = r.R.porMes[i]; return `<td class="${v < 0 ? 'neg' : ''}">${v == null ? '<span class="mute">—</span>' : brl(v)}</td>`; }).join('')}<td><b>${r.n ? brl(r.R.liq) : '—'}</b></td></tr>`).join('')}
-    <tr class="total"><td></td><td style="text-align:left">Total</td><td></td><td></td><td></td><td></td><td></td><td></td>${totMes.map(v => `<td>${v == null ? '—' : brl(v)}</td>`).join('')}<td>${brl(totLiq)}</td></tr>
+    <div class="tablewrap"><table style="font-size:.86rem"><thead><tr><th>#</th><th style="text-align:left">Imóvel</th><th>Ocupação</th><th>RevPAR</th><th>Diária média</th>${mes ? '<th>Rentab. no mês</th>' : '<th>Média R$/mês</th><th>Média %/mês</th><th>Meses</th>'}${cols.map(i => `<th>${MES3[i]}</th>`).join('')}<th>${mes ? 'Renda líquida' : 'Total ' + ano}</th></tr></thead><tbody>
+    ${rows.map((r, k) => `<tr data-act="locIm:${r.im.id}" style="cursor:pointer"><td>${r.n ? `<span class="rkb${k < 3 ? ' r' + (k + 1) : ''}">${k + 1}º</span>` : '—'}</td><td style="text-align:left;white-space:nowrap"><b>${esc(shortName(r.im))}</b><div class="mute" style="font-size:.72rem">${locModLabel(r.mod)}${r.car && r.car.com && !r.car.primK ? ' · 1º recebimento previsto em ' + locKeyTxt(r.car.previstoK) : ''}</div></td>
+      <td>${r.mod === 'CURTA' ? pc(r.ocup) : '<span class="mute" title="Locação mensal: não se aplica">n/a</span>'}</td><td>${r.revpar != null ? brl(r.revpar) : na(r)}</td><td>${r.diaria != null ? brl(r.diaria) : na(r)}</td>
+      ${mes ? `<td>${pc(r.mediaPct, 2)}</td>` : `<td><b>${r.mediaRs != null ? brl(r.mediaRs) : '—'}</b></td><td>${pc(r.mediaPct, 2)}</td><td>${r.n}</td>`}
+      ${cols.map(i => cel(r, i)).join('')}<td><b class="${r.liq < 0 ? 'neg' : ''}">${r.n || r.R.cnt.length ? brl(r.liq) : '—'}</b></td></tr>`).join('')}
+    <tr class="total"><td></td><td style="text-align:left">Total</td><td></td><td></td><td></td>${mes ? '<td></td>' : '<td></td><td></td><td></td>'}${totMes.map(v => `<td>${v == null ? '—' : brl(v)}</td>`).join('')}<td>${brl(totLiq)}</td></tr>
     </tbody></table></div>
-    <p class="mute" style="font-size:.78rem;margin:8px 0 0;line-height:1.5">Ordem: do que mais rende para o que menos rende no ano. Só contam os meses em operação ("—" = antes de começar a operar ou sem movimento; não entra como zero nas médias).
-      <b>Ocupação</b> = (dias reservados + bloqueados) ÷ dias do mês, média dos meses, como nas planilhas. <b>RevPAR</b> = receita bruta das reservas ÷ dias dos meses em operação. <b>Diária média</b> = receita bruta ÷ dias reservados.
-      <b>Média R$</b> = renda líquida ÷ meses em operação. <b>Média %</b> = renda líquida do mês ÷ valor de referência do imóvel, média dos meses. Clique num imóvel para ver o desempenho mês a mês.</p>
+    <p class="mute" style="font-size:.78rem;margin:8px 0 0;line-height:1.5">Ordem: do que mais rende para o que menos rende em ${per}. Só contam os meses em operação ("—" = antes de começar a operar ou sem movimento; não entra como zero nas médias).
+      Na locação mensal pela Messen e pelo Quinto Andar, o 1º aluguel é a comissão de intermediação da imobiliária: os meses até o 1º recebimento aparecem como <b>comissão</b> (e os anteriores ao contrato, como <b>antes do contrato</b>): os valores entram no total, mas esses meses não contam nas médias.
+      Na curta temporada, cada mês mostra as reservas daquele mês (o anfitrião deposita no mês seguinte).
+      <b>Ocupação</b> = (dias reservados + bloqueados) ÷ dias do mês, como nas planilhas. <b>RevPAR</b> = receita bruta das reservas ÷ dias do período. <b>Diária média</b> = receita bruta ÷ dias reservados.
+      <b>Média R$</b> = renda líquida ÷ meses em operação. <b>Média %</b> = renda líquida do mês ÷ valor de referência do imóvel. Clique num imóvel para ver o desempenho mês a mês.</p>
   </section>`;
 }
 
@@ -5667,6 +5811,7 @@ function sheetData() {
   if (kind === 'custom') return data;
   if (kind === 'imovel') return imovelSheet(...args);
   if (kind === 'donoDet') return donoDetSheet(...args);
+  if (kind === 'hisOficial') return hisOficialForm(...args);
   if (kind === 'imovelForm') return imovelForm(...args);
   if (kind === 'parcela') return parcelaForm(args[0], args[1]);
   if (kind === 'novaParcela') return parcelaForm(args[0], null);
@@ -5724,7 +5869,7 @@ function showErrs(errs) {
 /* ====================================================================== eventos */
 function afterRender() {
   const bind = (id, k, ev = 'change') => { const el = $('#' + id); if (el) el.addEventListener(ev, () => { S.f[k] = el.value; render(); if (ev === 'input') { const e2 = $('#' + id); e2.focus(); e2.setSelectionRange(e2.value.length, e2.value.length); } }); };
-  bind('gAno', 'gAno');
+  bind('gAno', 'gAno'); bind('gMes', 'gMes');
   bind('piAno', 'piAno'); bind('piMes', 'piMes'); invWire();
   bind('locAno', 'locAno'); bind('locMes', 'locMes'); bind('locImF', 'locImF'); bind('locImSel', 'locIm');
   bind('stAno', 'stAno'); bind('stMes', 'stMes'); bind('stIm', 'stIm'); bind('stMet', 'stMet');
@@ -5820,7 +5965,7 @@ async function onAppClick(e) {
     case 'exportBanco': return exportBanco();
     case 'webSair': return window.VRPM_WEB?.sair();
     case 'webUsuarios': return window.VRPM_WEB?.usuarios();
-    default: if (cmd.startsWith('dono')) return donoAct(cmd, p); if (cmd.startsWith('inv') || cmd.startsWith('incc')) return invAct(cmd, p); if (cmd.startsWith('st')) return stAct(cmd, p); if (cmd.startsWith('loc')) return locAct(cmd, p); if (cmd.startsWith('vnd')) return vndAct(cmd, p); if (cmd.startsWith('pi')) return piAct(cmd, p); return;
+    default: if (cmd.startsWith('dono')) return donoAct(cmd, p); if (cmd.startsWith('his')) return hisAct(cmd, p); if (cmd.startsWith('inv') || cmd.startsWith('incc')) return invAct(cmd, p); if (cmd.startsWith('st')) return stAct(cmd, p); if (cmd.startsWith('loc')) return locAct(cmd, p); if (cmd.startsWith('vnd')) return vndAct(cmd, p); if (cmd.startsWith('pi')) return piAct(cmd, p); return;
     case 'exportJson': return exportJson();
     case 'applyImport': return applyImport();
     case 'backupAgora': try { toast('Fazendo cópia…', 0); await makeBackup('Cópia manual'); toast('Cópia criada'); loadBackupList(); } catch (er) { toast(dbErr(er)); } return;
