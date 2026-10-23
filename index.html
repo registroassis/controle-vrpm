@@ -5467,7 +5467,7 @@ function inccStatus() {
    Locação: art. 7º-A — aluguel até 30% da renda-limite da faixa (art. 46 da Lei 16.050/2014).
      Renda-limite = salários mínimos da faixa (HIS-1: 3, HIS-2: 6, HMP: 10) × salário mínimo vigente (série SGS 1619).
    Nada é estimado: se faltar o índice de algum mês ou o salário mínimo, o valor fica "aguardando". */
-const HIS_FAIXAS = { 'HIS-1': { sm: 3 }, 'HIS-2': { sm: 6 }, 'HMP': { sm: 10 } };
+const HIS_FAIXAS = { 'HIS-1': { sm: 3, pc: 0.5 }, 'HIS-2': { sm: 6, pc: 1 }, 'HMP': { sm: 10, pc: 1.5 } }; // renda familiar e per capita em salários mínimos (Decreto 64.895/2026, art. 1º)
 const HIS_OFICIAL = [ // valores oficiais de venda publicados (ano de vigência)
   { ano: 2025, 'HIS-1': 266000, 'HIS-2': 369600, 'HMP': 518000, fonte: 'Decreto nº 63.130/2024, art. 6º-A (valores vigentes até jan/2026)', ref_ate: '2025-04' },
   { ano: 2026, 'HIS-1': 276102.20, 'HIS-2': 383636.74, 'HMP': 537672.71, fonte: 'Decreto nº 64.895, de 5/1/2026 (DOC 6/1/2026) — INCC-M de mai/2025 a dez/2025', ref_ate: '2025-12' },
@@ -5506,7 +5506,7 @@ function hisVenda(faixa, ano = Number(todayISO().slice(0, 4))) {
 }
 function hisLocacao(faixa) {
   if (!S.his.sm) return null; const ks = Object.keys(S.his.sm).sort(); const k = ks[ks.length - 1]; if (!k) return null;
-  const sm = S.his.sm[k]; const renda = sm * HIS_FAIXAS[faixa].sm; return { sm, ref: k, renda, aluguel: Math.round(renda * 0.30 * 100) / 100 };
+  const sm = S.his.sm[k]; const renda = sm * HIS_FAIXAS[faixa].sm; return { sm, ref: k, renda, percapita: Math.round(sm * HIS_FAIXAS[faixa].pc * 100) / 100, aluguel: Math.round(renda * 0.30 * 100) / 100 };
 }
 function hisPanel(im) {
   const faixa = HIS_FAIXAS[im.categoria] ? im.categoria : null; if (!faixa) return '';
@@ -5523,12 +5523,14 @@ function hisPanel(im) {
   return `<section class="panel"><div class="panel-h"><span class="ph-ic">${icon('shield')}</span><h2>Limites ${faixa} · Prefeitura de São Paulo</h2>${S.his.carregando ? '<span class="chip warn">atualizando…</span>' : `<button class="btn small" data-act="hisAtual:${im.id}">${icon('restore')}Atualizar</button>`}</div>
     <div class="kpis">
       <div class="kpi"><div class="eyebrow">Valor limite para venda · ${ano}</div><div class="v">${V?.v ? brl(V.v) : '—'}</div><div class="s">${V?.v ? (V.oficial ? (V.registrado ? 'valor oficial registrado' : 'valor oficial do decreto') : 'calculado pelo INCC-M (regra do decreto) — confira quando sair o decreto do ano') : V?.aguardando ? 'aguardando: ' + esc(V.aguardando) : 'sem valor-base'}</div></div>
+      <div class="kpi"><div class="eyebrow">Teto de renda familiar ${faixa}</div><div class="v">${L ? brl(L.renda) : '—'}</div><div class="s">${L ? `por mês (${HIS_FAIXAS[faixa].sm} salários mínimos) ou ${brl(L.percapita)} por pessoa — renda máxima de quem compra ou aluga` : S.his.carregando ? 'carregando o salário mínimo…' : 'salário mínimo ainda não carregado'}</div></div>
       <div class="kpi"><div class="eyebrow">Valor limite para locação (mês)</div><div class="v">${L ? brl(L.aluguel) : '—'}</div><div class="s">${L ? `30% da renda-limite ${faixa} (${brl(L.renda)} = ${HIS_FAIXAS[faixa].sm} × salário mínimo de ${brl(L.sm)})` : S.his.carregando ? 'carregando o salário mínimo…' : 'salário mínimo ainda não carregado'}</div></div>
     </div>
     ${avisos.map(([k, t]) => `<div class="note ${k === 'ok' ? '' : k}" style="font-size:.86rem;margin-top:10px">${t}</div>`).join('')}
     <details style="margin-top:10px"><summary class="mute" style="cursor:pointer;font-size:.82rem">Base legal, histórico e como se atualiza</summary>
       <div class="mute" style="font-size:.82rem;line-height:1.55">
       <p><b>Venda:</b> Decreto nº 63.130/2024, art. 6º-A — vender acima do limite descumpre os arts. 46 e 47 da Lei nº 16.050/2014. O valor é corrigido uma vez por ano pelo INCC-M; a Prefeitura publica o novo valor por decreto em janeiro. ${V?.fonte ? 'Valor deste ano: ' + esc(V.fonte) + '.' : ''}</p>
+      <p><b>Renda familiar:</b> Decreto nº 64.895/2026, art. 1º — para se enquadrar em ${faixa}, a família pode ganhar até ${HIS_FAIXAS[faixa].sm} salários mínimos por mês (ou ${String(HIS_FAIXAS[faixa].pc).replace('.', ',')} salário mínimo por pessoa); em 2026, R$ 9.726,00 ou R$ 1.621,00 per capita para HIS-2. Vale para quem compra e para quem aluga.</p>
       <p><b>Locação:</b> art. 7º-A do mesmo decreto — o aluguel não pode passar de 30% da renda-limite da faixa. A renda-limite ${faixa} é ${HIS_FAIXAS[faixa].sm} salários mínimos e muda quando muda o salário mínimo${L ? ` (vigente: ${brl(L.sm)}, ${mesNome(L.ref)})` : ''}.</p>
       <p><b>Atualização automática:</b> o sistema consulta o Banco Central (INCC-M e salário mínimo) uma vez por dia. Em janeiro, com o INCC-M de dezembro publicado, o limite de venda do novo ano é calculado pela mesma regra do decreto; quando o decreto sair, registre o valor oficial em "Registrar valor oficial do decreto" e ele passa a valer.${S.his.consultado ? ` Última consulta: ${fdate(S.his.consultado)} às ${new Date(S.his.consultado).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.` : ''}</p>
       <div class="tablewrap"><table><thead><tr><th>Ano</th><th>Limite de venda ${faixa}</th><th style="text-align:left">Fonte</th></tr></thead><tbody>${hist.map(h => `<tr><td>${h.ano}</td><td>${brl(h[faixa])}</td><td style="text-align:left;white-space:normal">${esc(h.fonte || '')}</td></tr>`).join('')}${V && !V.oficial && V.v ? `<tr><td>${ano}</td><td>${brl(V.v)}</td><td style="text-align:left">calculado pelo INCC-M</td></tr>` : ''}</tbody></table></div>
