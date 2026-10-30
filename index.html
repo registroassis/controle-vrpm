@@ -1992,15 +1992,18 @@ const EMP_F = [
 ];
 const histList = () => Object.values(S.hist).flatMap(d => d.itens || []).sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
 
+/* parcela sem valor a pagar: bonificada, quitada pelo banco ou só informativa (sem_saldo = 'BONIFICADA' | 'PELO BANCO' | 'INFORMATIVA'): não vence, não pede pagamento e não soma no a pagar */
+const parcSemSaldo = (p) => !!p.sem_saldo && p.valor_pago == null;
 function parcStatus(p, hoje = todayISO()) {
   if (p.valor_pago != null) return 'PAGA';
+  if (p.sem_saldo) return String(p.sem_saldo);
   if (!p.vencimento) return 'EM ABERTO';
   return p.vencimento < hoje ? 'VENCIDA' : 'A VENCER';
 }
 function imStats(im) {
   const ps = (im.parcelas || []).filter(p => !p.excluido);
   const pagas = ps.filter(p => p.valor_pago != null);
-  const abertas = ps.filter(p => p.valor_pago == null);
+  const abertas = ps.filter(p => p.valor_pago == null && !p.sem_saldo);
   const pago = pagas.reduce((s, p) => s + (p.valor_pago || 0), 0);
   const saldo = abertas.reduce((s, p) => s + (p.valor_parcela || 0), 0);
   const prox = abertas.filter(p => p.vencimento).map(p => p.vencimento).sort()[0] || null;
@@ -2011,7 +2014,7 @@ function imStats(im) {
 const obraAtrasada = (im) => im.situacao_obra !== 'ENTREGUE' && im.previsao_entrega && im.previsao_entrega < todayISO();
 function sums(list) { const s = { RECEITA: 0, DESPESA: 0, INVESTIMENTO: 0 }; list.forEach(l => { if ((l.status || 'REALIZADO') === 'REALIZADO') s[l.tipo] = (s[l.tipo] || 0) + (l.valor || 0); }); s.res = s.RECEITA - s.DESPESA; s.saldo = s.res - s.INVESTIMENTO; return s; }
 /* conta fixa ligada a imóvel: valor = parcela mensal (atualizada) em aberto ou último pagamento */
-const contaProxParcela = (c) => c.imovel_id ? (S.imoveis[c.imovel_id]?.parcelas || []).filter(p => !p.excluido && p.valor_pago == null && (!p.tipo || p.tipo === 'MENSAL')).sort((a, b) => (a.vencimento || '9').localeCompare(b.vencimento || '9'))[0] || null : null;
+const contaProxParcela = (c) => c.imovel_id ? (S.imoveis[c.imovel_id]?.parcelas || []).filter(p => !p.excluido && p.valor_pago == null && !p.sem_saldo && (!p.tipo || p.tipo === 'MENSAL')).sort((a, b) => (a.vencimento || '9').localeCompare(b.vencimento || '9'))[0] || null : null;
 async function contaSyncParcela(imId, p) {
   if (!p || p.valor_pago == null || (p.tipo && p.tipo !== 'MENSAL')) return [];
   const cs = contasList().filter(c => c.imovel_id === imId && !c.arquivado); const out = [];
@@ -2156,7 +2159,7 @@ function loadingView() {
 function alertasCount() {
   try {
     const ims = imList().filter(i => !i.arquivado);
-    const venc = ims.reduce((a, i) => a + (i.parcelas || []).filter(p => !p.excluido && p.valor_pago == null && parcStatus(p) === 'VENCIDA').length, 0);
+    const venc = ims.reduce((a, i) => a + (i.parcelas || []).filter(p => !p.excluido && p.valor_pago == null && !p.sem_saldo && parcStatus(p) === 'VENCIDA').length, 0);
     const contas = contasList().filter(c => !c.arquivado && contaAlerta(c)?.k === 'neg').length;
     const obras = ims.filter(i => !i.vendido && obraAtrasada(i)).length;
     return venc + contas + obras + pendencias().filter(p => p.status === 'ABERTA').length;
@@ -2188,7 +2191,7 @@ VIEWS.inicio = () => {
   const ims = imList().filter(i => !i.arquivado);
   const st = ims.map(i => [i, imStats(i)]);
   const pago = st.reduce((s, [, x]) => s + x.pago, 0), saldo = st.reduce((s, [, x]) => s + x.saldo, 0);
-  const parcAb = st.flatMap(([i]) => (i.parcelas || []).filter(p => !p.excluido && p.valor_pago == null).map(p => ({ im: i, p })));
+  const parcAb = st.flatMap(([i]) => (i.parcelas || []).filter(p => !p.excluido && p.valor_pago == null && !p.sem_saldo).map(p => ({ im: i, p })));
   const vencidas = parcAb.filter(x => parcStatus(x.p) === 'VENCIDA');
   const prox30 = parcAb.filter(x => x.p.vencimento && x.p.vencimento >= hoje && daysBetween(hoje, x.p.vencimento) <= 30);
   const cs = contasList().filter(c => !c.arquivado);
@@ -2364,7 +2367,7 @@ function imovelSheet(id) {
   const im = S.imoveis[id]; if (!im) return closeSheet();
   const s = imStats(im);
   const ps = (im.parcelas || []).filter(p => !p.excluido).slice().sort((a, b) => (a.vencimento || a.data_pagamento || '').localeCompare(b.vencimento || b.data_pagamento || '') || a.id.localeCompare(b.id));
-  const abertas = ps.filter(p => p.valor_pago == null);
+  const abertas = ps.filter(p => p.valor_pago == null && !p.sem_saldo);
   const fld = (l, v, txt) => `<div><dt>${l}</dt><dd>${v != null && v !== '' ? v : txt ? `<span class="mute">${esc(txt)}</span>` : '<span class="empty-v">a preencher</span>'}</dd></div>`;
   const origemLinks = origens().filter(o => (o.imoveis || []).includes(id)).map(o => o.nome);
   const lancs = lancList().filter(l => origemLinks.includes(l.origem));
@@ -2409,7 +2412,7 @@ function imovelSheet(id) {
       </section>
       ${lancs.length ? `<section class="panel"><div class="panel-h"><h2>Nos lançamentos da VRPM</h2></div><dl class="info">${fld('Receitas', brl(sl.RECEITA))}${fld('Despesas', brl(sl.DESPESA))}${fld('Investimentos', brl(sl.INVESTIMENTO))}${fld('Resultado (R − D)', `<span class="${sl.res < 0 ? 'neg' : 'pos'}">${brl(sl.res)}</span>`)}</dl></section>` : ''}
       <section class="panel"><div class="panel-h"><h2>Parcelas</h2>${S.readonly ? '' : `<button class="btn small" data-act="novaParcela:${id}">${icon('plus')}Nova parcela</button>`}</div>
-        <div class="list">${ps.map(p => { const stt = parcStatus(p); return `<button class="row" data-act="parcela:${id}:${p.id}"><div class="main"><div class="t">${esc(p.tipo || 'Parcela')} · ${esc((p.mes_ref || '').toLowerCase())} ${p.ano ?? ''}</div><div class="sub">${p.vencimento ? 'Vence ' + fdate(p.vencimento) : p.vencimento_texto ? 'Vencimento: ' + esc(p.vencimento_texto) : 'Sem vencimento'}${p.data_pagamento ? ' · pago ' + fdate(p.data_pagamento) : ''}${p.desconto ? ' · desc. ' + brl(p.desconto) : ''}</div></div><div style="text-align:right"><div class="amt">${brl(p.valor_pago ?? p.valor_parcela)}</div><span class="chip ${stt === 'PAGA' ? 'pos' : stt === 'VENCIDA' ? 'neg' : 'warn'}">${stt.toLowerCase()}</span></div></button>`; }).join('') || '<p class="mute">Nenhuma parcela cadastrada.</p>'}</div>
+        <div class="list">${ps.map(p => { const stt = parcStatus(p); return `<button class="row" data-act="parcela:${id}:${p.id}"><div class="main"><div class="t">${esc(p.tipo || 'Parcela')} · ${esc((p.mes_ref || '').toLowerCase())} ${p.ano ?? ''}</div><div class="sub">${p.vencimento ? 'Vence ' + fdate(p.vencimento) : p.vencimento_texto ? 'Vencimento: ' + esc(p.vencimento_texto) : 'Sem vencimento'}${p.data_pagamento ? ' · pago ' + fdate(p.data_pagamento) : ''}${p.desconto ? ' · desc. ' + brl(p.desconto) : ''}</div></div><div style="text-align:right"><div class="amt">${p.valor_parcela == null && p.valor_pago == null ? '<span class="mute">—</span>' : brl(p.valor_pago ?? p.valor_parcela)}</div>${parcSemSaldo(p) ? `<div class="mute" style="font-size:.74rem">a pagar R$ 0,00</div>` : ''}<span class="chip ${stt === 'PAGA' || parcSemSaldo(p) ? 'pos' : stt === 'VENCIDA' ? 'neg' : 'warn'}">${stt.toLowerCase()}</span></div></button>`; }).join('') || '<p class="mute">Nenhuma parcela cadastrada.</p>'}</div>
       </section>
       ${S.readonly ? '' : `<div class="btns"><button class="btn" data-act="arquivarImovel:${id}">${icon('archive')}${im.arquivado ? 'Desarquivar' : 'Arquivar'}</button><button class="btn danger" data-act="excluirImovel:${id}">${icon('trash')}Mover para a Lixeira</button></div>`}
       <p class="mute" style="font-size:.8rem">Aba original: ${esc(im.aba_origem || '—')}</p>`,
@@ -2533,11 +2536,12 @@ function parcelaForm(imId, pId, mode) {
         <input type="hidden" id="p_tipo" value="${esc(p.tipo || '')}"><input type="hidden" id="p_ano" value="${p.ano ?? ''}"><input type="hidden" id="p_mes" value="${esc(p.mes_ref || '')}">
         <input type="hidden" id="p_venc" value="${p.vencimento || ''}"><input type="hidden" id="p_valor" value="${moneyInput(p.valor_parcela)}">
       ` : `
-        <div class="f2"><div class="f req"><label for="p_tipo">Tipo</label><select id="p_tipo">${['ENTRADA', 'SINAL', 'MENSAL', 'INTERMEDIARIA', 'COMISSÃO', 'COMPRA', 'CHAVES'].map(t => `<option ${t === (p.tipo || '').trim() ? 'selected' : ''}>${t}</option>`).join('')}${p.tipo && !['ENTRADA', 'SINAL', 'MENSAL', 'INTERMEDIARIA', 'COMISSÃO', 'COMPRA', 'CHAVES'].includes(p.tipo) ? `<option selected>${esc(p.tipo)}</option>` : ''}</select></div>
+        <div class="f2"><div class="f req"><label for="p_tipo">Tipo</label><select id="p_tipo">${[...new Set(['ENTRADA', 'SINAL', 'MENSAL', 'INTERMEDIARIA', 'COMISSÃO', 'COMPRA', 'CHAVES', 'FINANCIAMENTO', 'PRESTAÇÃO CAIXA', 'JUROS DE OBRA', 'DOCUMENTAÇÃO', ...((p.tipo || '').trim() ? [(p.tipo || '').trim()] : [])])].map(t => `<option ${t === (p.tipo || '').trim() ? 'selected' : ''}>${t}</option>`).join('')}${p.tipo && !['ENTRADA', 'SINAL', 'MENSAL', 'INTERMEDIARIA', 'COMISSÃO', 'COMPRA', 'CHAVES'].includes(p.tipo) ? `<option selected>${esc(p.tipo)}</option>` : ''}</select></div>
           <div class="f"><label for="p_ano">Ano</label><input type="number" id="p_ano" inputmode="numeric" value="${p.ano ?? ''}"></div></div>
         <div class="f2"><div class="f"><label for="p_mes">Mês de referência</label><input type="text" id="p_mes" list="dl_mes" value="${esc(p.mes_ref || '')}"><datalist id="dl_mes">${MESES.map(m => `<option value="${m}">`).join('')}<option value="ENTREGA DO HABITE-SE"></datalist></div>
           <div class="f"><label for="p_venc">Vencimento</label><input type="date" id="p_venc" value="${p.vencimento || ''}">${p.vencimento_texto ? `<span class="hint">No original: "${esc(p.vencimento_texto)}"</span>` : ''}</div></div>
-        <div class="f req"><label for="p_valor">Valor da parcela</label><input class="money" type="text" id="p_valor" inputmode="decimal" value="${moneyInput(p.valor_parcela)}"></div>
+        <div class="f2"><div class="f req"><label for="p_valor">Valor da parcela</label><input class="money" type="text" id="p_valor" inputmode="decimal" value="${moneyInput(p.valor_parcela)}"></div>
+          <div class="f"><label for="p_semsaldo">Valor a pagar</label><select id="p_semsaldo">${[['', 'Normal (entra no a pagar)'], ['BONIFICADA', 'R$ 0,00 · bonificada pela construtora'], ['PELO BANCO', 'R$ 0,00 · paga pelo financiamento'], ['INFORMATIVA', 'R$ 0,00 · só informativa']].map(([k, t]) => `<option value="${k}" ${(p.sem_saldo || '') === k ? 'selected' : ''}>${t}</option>`).join('')}</select><span class="hint">Mantém o valor da parcela, mas não soma no saldo a pagar.</span></div></div>
         <div class="f2"><div class="f"><label for="p_enc">Encargos</label><input type="text" id="p_enc" inputmode="decimal" value="${moneyInput(p.encargos)}"></div><div class="f"><label for="p_desc">Desconto</label><input type="text" id="p_desc" inputmode="decimal" value="${moneyInput(p.desconto)}"></div></div>
         <div class="f2"><div class="f"><label for="p_pago">Valor pago</label><input type="text" id="p_pago" inputmode="decimal" value="${moneyInput(p.valor_pago)}"><span class="hint">Deixe vazio enquanto não pagar.</span></div>
           <div class="f"><label for="p_dpg">Data do pagamento</label><input type="date" id="p_dpg" value="${p.data_pagamento || ''}"></div></div>
@@ -2553,7 +2557,8 @@ async function saveParcela(ctx) {
   const v = (id) => ($('#' + id)?.value ?? '').trim();
   const errs = [];
   const valor = parseMoney(v('p_valor')), pago = parseMoney(v('p_pago')), enc = parseMoney(v('p_enc')), desc = parseMoney(v('p_desc'));
-  if (valor == null || Number.isNaN(valor)) errs.push(['p_valor', 'Informe o valor da parcela.']);
+  const semSaldo = $('#p_semsaldo') ? v('p_semsaldo') || null : undefined;
+  if (Number.isNaN(valor) || (valor == null && !semSaldo)) errs.push(['p_valor', 'Informe o valor da parcela.']);
   if (Number.isNaN(pago)) errs.push(['p_pago', 'Valor inválido.']);
   if (ctx.pagar && pago == null) errs.push(['p_pago', 'Informe o valor pago.']);
   if (pago != null && !v('p_dpg')) errs.push(['p_dpg', 'Informe a data do pagamento.']);
@@ -2562,7 +2567,8 @@ async function saveParcela(ctx) {
   const im = S.imoveis[ctx.imId];
   const data = { tipo: v('p_tipo') || null, ano: v('p_ano') ? Number(v('p_ano')) : null, mes_ref: v('p_mes') || null, vencimento: v('p_venc') || null,
     valor_parcela: valor, encargos: enc, desconto: desc, valor_pago: pago, data_pagamento: pago != null ? v('p_dpg') : null, observacoes: v('p_obs') || null };
-  data.status_pagamento = data.valor_pago != null ? 'PAGA' : 'EM ABERTO';
+  if (semSaldo !== undefined) data.sem_saldo = semSaldo;
+  data.status_pagamento = data.valor_pago != null ? 'PAGA' : semSaldo || 'EM ABERTO';
   const allIds = imList(true).flatMap(i => (i.parcelas || []).map(p => p.id));
   const pid = ctx.pId || nextId('PAR', allIds);
   let antes = null;
@@ -2802,7 +2808,7 @@ function guessOrigem(c) {
 }
 function pagarConta(id) {
   const c = S.contas[id];
-  if (c.imovel_id) { const im = S.imoveis[c.imovel_id]; const p = (im?.parcelas || []).filter(x => !x.excluido && x.valor_pago == null).sort((a, b) => (a.vencimento || '9').localeCompare(b.vencimento || '9'))[0]; if (p) return openSheet('pagar', c.imovel_id, p.id); }
+  if (c.imovel_id) { const im = S.imoveis[c.imovel_id]; const p = (im?.parcelas || []).filter(x => !x.excluido && x.valor_pago == null && !x.sem_saldo).sort((a, b) => (a.vencimento || '9').localeCompare(b.vencimento || '9'))[0]; if (p) return openSheet('pagar', c.imovel_id, p.id); }
   const now = new Date();
   S.sheet = { kind: 'lancForm', args: [null, { tipo: 'DESPESA', origem: guessOrigem(c), valor: c.valor, descricao: c.conta, ano: now.getFullYear(), mes: now.getMonth() + 1, status: 'REALIZADO', data: todayISO(), contaId: id }] };
   render();
@@ -5213,7 +5219,7 @@ function invCalc(im) {
   const sim = invSim(im);
   const ps = (im.parcelas || []).filter(p => !p.excluido && p.valor_pago != null && Number(p.valor_pago) > 0)
     .slice().sort((a, b) => (a.data_pagamento || '9').localeCompare(b.data_pagamento || '9'));
-  const abertas = (im.parcelas || []).filter(p => !p.excluido && p.valor_pago == null);
+  const abertas = (im.parcelas || []).filter(p => !p.excluido && p.valor_pago == null && !p.sem_saldo);
   const linhas = ps.map(p => {
     const desc = `${p.tipo || 'Parcela'}${p.mes_ref ? ' · ' + String(p.mes_ref).toLowerCase() : ''}${p.ano ? ' ' + p.ano : ''}`;
     const okData = /^\d{4}-\d{2}-\d{2}$/.test(p.data_pagamento || '');
@@ -5622,7 +5628,7 @@ function donoDados() {
   const Lc = lancList().filter(l => l.ano === ano); const sAno = sums(Lc);
   const mesesV = [...new Set(Lc.map(l => l.mes))].sort((a, b) => b - a); const umV = mesesV[0]; const sUm = umV ? sums(Lc.filter(l => l.mes === umV)) : null;
   // compromissos: parcelas em aberto por mês, próximos 12 meses
-  const abertas = ims.flatMap(im => (im.parcelas || []).filter(p => !p.excluido && p.valor_pago == null).map(p => ({ im, p })));
+  const abertas = ims.flatMap(im => (im.parcelas || []).filter(p => !p.excluido && p.valor_pago == null && !p.sem_saldo).map(p => ({ im, p })));
   const venc = abertas.filter(x => parcStatus(x.p) === 'VENCIDA');
   const lim = mesAdd(hoje.slice(0, 7), 11);
   const comp = {}; abertas.filter(x => x.p.vencimento && x.p.vencimento.slice(0, 7) >= hoje.slice(0, 7) && x.p.vencimento.slice(0, 7) <= lim).forEach(x => { const k = x.p.vencimento.slice(0, 7); (comp[k] = comp[k] || { v: 0, n: 0, ims: new Set() }); comp[k].v += x.p.valor_parcela || 0; comp[k].n++; comp[k].ims.add(shortName(x.im)); });
@@ -5842,7 +5848,7 @@ function sheetHTML() {
     <div class="sheet-b">${d.body}</div>${d.foot ? `<div class="sheet-f">${d.foot}</div>` : ''}</div></div>`;
 }
 function pickParcela() {
-  const ab = imList().filter(i => !i.arquivado).flatMap(i => (i.parcelas || []).filter(p => !p.excluido && p.valor_pago == null).map(p => ({ i, p }))).sort((a, b) => (a.p.vencimento || '9').localeCompare(b.p.vencimento || '9'));
+  const ab = imList().filter(i => !i.arquivado).flatMap(i => (i.parcelas || []).filter(p => !p.excluido && p.valor_pago == null && !p.sem_saldo).map(p => ({ i, p }))).sort((a, b) => (a.p.vencimento || '9').localeCompare(b.p.vencimento || '9'));
   return { title: 'Qual parcela?', body: ab.length ? `<div class="list">${ab.map(({ i, p }) => `<button class="row" data-act="pagar:${i.id}:${p.id}"><div class="main"><div class="t">${esc(shortName(i))}</div><div class="sub">${esc(p.tipo || '')} · ${esc((p.mes_ref || '').toLowerCase())} ${p.ano || ''} · vence ${fdate(p.vencimento)}</div></div><div class="amt">${brl(p.valor_parcela)}</div></button>`).join('')}</div>` : '<p class="mute">Nenhuma parcela em aberto.</p>' };
 }
 let confirmCfg = null;
