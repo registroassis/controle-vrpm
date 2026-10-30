@@ -2204,9 +2204,9 @@ VIEWS.inicio = () => {
   const um = meses[0];
   const sUm = um ? sums(L.filter(l => l.ano === ano && l.mes === um)) : null;
   const alerts = [];
-  if (vencidas.length) alerts.push(['neg', `<b>${vencidas.length} parcela${vencidas.length > 1 ? 's' : ''} vencida${vencidas.length > 1 ? 's' : ''}</b> sem pagamento`, 'go:imoveis']);
+  if (vencidas.length) alerts.push(['neg', `<b>${vencidas.length} parcela${vencidas.length > 1 ? 's' : ''} vencida${vencidas.length > 1 ? 's' : ''}</b> sem pagamento`, 'parcLista:venc']);
   if (atras.length) alerts.push(['neg', `<b>${atras.length} conta${atras.length > 1 ? 's' : ''} fixa${atras.length > 1 ? 's' : ''} atrasada${atras.length > 1 ? 's' : ''}:</b> ${atras.map(c => `${esc(c.conta)} (venceu ${fdate(contaVenc(c))}${c.valor != null ? ' · ' + brl(c.valor) : ''})`).join('; ')}`, atras.length === 1 ? `conta:${atras[0].id}` : 'go:contas']);
-  if (prox30.length) alerts.push(['warn', `<b>${prox30.length} parcela${prox30.length > 1 ? 's' : ''}</b> vence${prox30.length > 1 ? 'm' : ''} nos próximos 30 dias · ${brl(prox30.reduce((s, x) => s + (x.p.valor_parcela || 0), 0))}`, 'go:imoveis']);
+  if (prox30.length) alerts.push(['warn', `<b>${prox30.length} parcela${prox30.length > 1 ? 's' : ''}</b> vence${prox30.length > 1 ? 'm' : ''} nos próximos 30 dias · ${brl(prox30.reduce((s, x) => s + (x.p.valor_parcela || 0), 0))}`, 'parcLista:prox30']);
   if (aguard.length) alerts.push(['warn', `<b>${aguard.length} conta${aguard.length > 1 ? 's' : ''}</b> aguardando pagamento`, 'go:contas']);
   if (obra.length) alerts.push(['warn', `<b>${obra.length} imóve${obra.length > 1 ? 'is' : 'l'}</b> com previsão de entrega vencida: ${obra.map(i => esc(shortName(i))).join(', ')}`, 'go:imoveis']);
   const stPend = stMeses().filter(m => S.stcfg[m.imovel_id]).map(m => stA(m)).filter(a => a.statusRep === 'PENDENTE' || a.statusRep === 'PARCIAL');
@@ -5635,7 +5635,7 @@ function donoDados() {
   const semData = abertas.filter(x => !x.p.vencimento);
   // alertas que pedem decisão
   const A = [];
-  if (venc.length) A.push(['neg', `<b>${venc.length} parcela(s) de imóvel vencida(s)</b> sem pagamento · ${brl(venc.reduce((a, x) => a + (x.p.valor_parcela || 0), 0))}`, 'go:imoveis']);
+  if (venc.length) A.push(['neg', `<b>${venc.length} parcela(s) de imóvel vencida(s)</b> sem pagamento · ${brl(venc.reduce((a, x) => a + (x.p.valor_parcela || 0), 0))}`, 'parcLista:venc']);
   ims.filter(obraAtrasada).forEach(im => A.push(['warn', `<b>${esc(shortName(im))}</b>: previsão de entrega (${fdate(im.previsao_entrega)}) já passou — situação: ${esc((im.situacao_obra || '').toLowerCase())}`, `imovel:${im.id}`]));
   const parados = ims.filter(im => im.situacao_obra === 'ENTREGUE' && !LOC_USOS.includes(im.situacao_uso) && !locIsST(im.id) && !locPools().some(p => p.imoveis.includes(im.id)));
   if (parados.length) A.push(['warn', `<b>${parados.length} imóve${parados.length > 1 ? 'is entregues' : 'l entregue'} ainda sem gerar renda:</b> ${parados.map(im => `${esc(shortName(im))}${im.situacao_uso ? ' (' + esc(usoLabel(im.situacao_uso).toLowerCase()) + ')' : ''}`).join('; ')}`, parados.length === 1 ? `imovel:${parados[0].id}` : 'go:imoveis']);
@@ -5819,6 +5819,7 @@ function sheetData() {
   if (kind === 'custom') return data;
   if (kind === 'imovel') return imovelSheet(...args);
   if (kind === 'donoDet') return donoDetSheet(...args);
+  if (kind === 'parcLista') return parcListaSheet(...args);
   if (kind === 'hisOficial') return hisOficialForm(...args);
   if (kind === 'imovelForm') return imovelForm(...args);
   if (kind === 'parcela') return parcelaForm(args[0], args[1]);
@@ -5846,6 +5847,19 @@ function sheetHTML() {
   return `<div class="scrim" data-act="scrim"><div class="sheet${['stRevisao', 'stMes', 'stExpl', 'pendFix', 'locLista', 'inDet', 'donoDet'].includes(S.sheet.kind) || (S.sheet.kind === 'imovel' && S.imTab === 'inv') ? ' wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(d.title)}">
     <div class="sheet-h"><h2>${esc(d.title)}</h2><button class="iconbtn" data-act="closeSheet" aria-label="Fechar">${icon('x')}</button></div>
     <div class="sheet-b">${d.body}</div>${d.foot ? `<div class="sheet-f">${d.foot}</div>` : ''}</div></div>`;
+}
+/* lista das parcelas de um alerta (vencidas ou nos próximos 30 dias), com atalho para pagar ou abrir o imóvel */
+function parcListaSheet(tipo) {
+  const hoje = todayISO();
+  const ab = imList().filter(i => !i.arquivado).flatMap(i => (i.parcelas || []).filter(p => !p.excluido && p.valor_pago == null && !p.sem_saldo).map(p => ({ i, p })));
+  const xs = (tipo === 'venc' ? ab.filter(x => parcStatus(x.p) === 'VENCIDA') : ab.filter(x => x.p.vencimento && x.p.vencimento >= hoje && daysBetween(hoje, x.p.vencimento) <= 30))
+    .sort((a, b) => (a.p.vencimento || '9').localeCompare(b.p.vencimento || '9'));
+  const tot = xs.reduce((s, x) => s + (x.p.valor_parcela || 0), 0);
+  return { title: tipo === 'venc' ? 'Parcelas vencidas sem pagamento' : 'Parcelas que vencem nos próximos 30 dias',
+    body: xs.length ? `<p class="mute" style="margin:0;font-size:.86rem">${xs.length} parcela(s) · total ${brl(tot)}. Toque numa parcela para registrar o pagamento.</p>
+      <div class="list">${xs.map(({ i, p }) => `<div class="row"><button class="main" style="border:0;background:none;text-align:left;padding:0;cursor:pointer" data-act="imovel:${i.id}"><div class="t">${esc(shortName(i))}</div><div class="sub">${esc(p.tipo || 'Parcela')}${p.numero ? ' ' + p.numero : ''} · vence ${fdate(p.vencimento)}${p.simulacao ? ' · valor da planilha/simulação' : ''}</div></button>
+        <div style="text-align:right"><div class="amt">${brl(p.valor_parcela)}</div><span class="chip ${parcStatus(p) === 'VENCIDA' ? 'neg' : 'warn'}">${parcStatus(p).toLowerCase()}</span></div>
+        ${S.readonly ? '' : `<button class="btn small" data-act="pagar:${i.id}:${p.id}">${icon('coin')}Pagar</button>`}</div>`).join('')}</div>` : '<p class="mute">Nenhuma parcela aqui.</p>' };
 }
 function pickParcela() {
   const ab = imList().filter(i => !i.arquivado).flatMap(i => (i.parcelas || []).filter(p => !p.excluido && p.valor_pago == null && !p.sem_saldo).map(p => ({ i, p }))).sort((a, b) => (a.p.vencimento || '9').localeCompare(b.p.vencimento || '9'));
@@ -5913,6 +5927,7 @@ async function onAppClick(e) {
   const W = !S.readonly;
   switch (cmd) {
     case 'go': return go(p[0]);
+    case 'parcLista': return openSheet('parcLista', p[0]);
     case 'sino': { const home = S.modo === 'dono' ? 'dono' : 'inicio'; if (S.view !== home) go(home); setTimeout(() => document.getElementById('atencao')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); return; }
     case 'search': return openSheet('search');
     case 'closeSheet': return closeSheet();
